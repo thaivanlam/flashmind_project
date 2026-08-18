@@ -8,6 +8,24 @@ FlashMind — AI flashcard app with SM-2 spaced repetition. Spring Boot 3.5.16 m
 
 Code comments, log messages, and user-facing error strings are written in **Vietnamese**; identifiers and API contracts in English. Match this when adding code.
 
+## Documentation
+
+All project documentation lives in [docs/](docs/). [docs/README.md](docs/README.md) is the index.
+
+**Before working on anything, read the docs covering the area you are about to touch.**
+[docs/architecture.md](docs/architecture.md) and [docs/backend.md](docs/backend.md) /
+[docs/frontend.md](docs/frontend.md) are the usual starting points; endpoint work needs
+[docs/api-reference.md](docs/api-reference.md), data or delete paths need
+[docs/data-model.md](docs/data-model.md).
+
+**After changing code, update the matching documentation in the same change.**
+[docs/maintaining-docs.md](docs/maintaining-docs.md) maps each code area to the docs that
+must be updated. New docs go in `docs/`, and must be added to the index table in
+`docs/README.md`.
+
+The root `README.md` is a short landing page only — detailed documentation belongs in `docs/`.
+This file (`CLAUDE.md`) and `docs/` must not contradict each other.
+
 ## Commands
 
 ### Full stack (Docker)
