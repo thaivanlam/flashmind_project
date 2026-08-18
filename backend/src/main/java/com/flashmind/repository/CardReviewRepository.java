@@ -47,4 +47,10 @@ public interface CardReviewRepository extends JpaRepository<CardReview, Long> {
     @Modifying
     @Query("DELETE FROM CardReview cr WHERE cr.cardId IN :cardIds")
     int deleteByCardIdIn(@Param("cardIds") Collection<Long> cardIds);
+
+    /** Dọn các review mồ côi (thẻ đã bị xóa) còn sót lại trong DB. */
+    @Modifying
+    @Query("DELETE FROM CardReview cr " +
+           "WHERE NOT EXISTS (SELECT 1 FROM Flashcard f WHERE f.id = cr.cardId)")
+    int deleteOrphanedReviews();
 }

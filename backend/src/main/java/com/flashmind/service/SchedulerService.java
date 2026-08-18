@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -40,5 +41,19 @@ public class SchedulerService {
             }
         }
         log.info("Cache xong {} due cards cho {} users", total, userIds.size());
+    }
+
+    /**
+     * Mỗi ngày lúc 03:00, dọn các review mồ côi — bản ghi card_reviews trỏ tới
+     * thẻ đã bị xóa. Các đường xóa hiện tại đã tự dọn, job này chỉ để làm sạch
+     * dữ liệu cũ còn sót lại từ trước khi bug được sửa.
+     */
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void cleanupOrphanedReviews() {
+        int deleted = cardReviewRepository.deleteOrphanedReviews();
+        if (deleted > 0) {
+            log.info("Đã dọn {} review mồ côi", deleted);
+        }
     }
 }
