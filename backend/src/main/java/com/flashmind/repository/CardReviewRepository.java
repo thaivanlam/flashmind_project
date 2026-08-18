@@ -17,13 +17,19 @@ public interface CardReviewRepository extends JpaRepository<CardReview, Long> {
 
     Optional<CardReview> findByCardIdAndUserId(Long cardId, Long userId);
 
+    /**
+     * Chỉ trả về review có thẻ tương ứng còn tồn tại — bỏ qua review mồ côi
+     * còn sót lại trong DB từ dữ liệu cũ (trước khi cascade delete được sửa).
+     */
     @Query("SELECT cr FROM CardReview cr WHERE cr.userId = :userId " +
-           "AND cr.nextReviewDate <= :date")
+           "AND cr.nextReviewDate <= :date " +
+           "AND EXISTS (SELECT 1 FROM Flashcard f WHERE f.id = cr.cardId)")
     List<CardReview> findDueReviews(@Param("userId") Long userId,
                                     @Param("date") LocalDate date);
 
     @Query("SELECT cr.cardId FROM CardReview cr WHERE cr.userId = :userId " +
-           "AND cr.nextReviewDate <= :date")
+           "AND cr.nextReviewDate <= :date " +
+           "AND EXISTS (SELECT 1 FROM Flashcard f WHERE f.id = cr.cardId)")
     List<Long> findDueCardIds(@Param("userId") Long userId,
                               @Param("date") LocalDate date);
 

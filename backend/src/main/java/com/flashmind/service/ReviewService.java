@@ -40,7 +40,10 @@ public class ReviewService {
             .stream()
             .collect(Collectors.toMap(Flashcard::getId, c -> c));
 
+        // Query đã loại review mồ côi; lọc thêm theo map thẻ tải được để chắc
+        // chắn client không bao giờ nhận `card: null`.
         return dueReviews.stream()
+            .filter(r -> cards.containsKey(r.getCardId()))
             .map(r -> CardReviewResponse.from(r, cards.get(r.getCardId())))
             .toList();
     }
