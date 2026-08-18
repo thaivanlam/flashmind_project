@@ -1,8 +1,9 @@
 package com.flashmind.service;
 
 import com.flashmind.entity.CardReview;
-import com.flashmind.entity.Flashcard;
 import com.flashmind.entity.StudySession;
+import com.flashmind.exception.ForbiddenException;
+import com.flashmind.exception.ResourceNotFoundException;
 import com.flashmind.repository.CardReviewRepository;
 import com.flashmind.repository.FlashcardRepository;
 import com.flashmind.repository.StudySessionRepository;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -34,6 +36,9 @@ class ReviewServiceTest {
     @Mock
     private StudySessionRepository sessionRepository;
 
+    @Mock
+    private FlashcardService flashcardService;
+
     @InjectMocks
     private ReviewService reviewService;
 
@@ -42,7 +47,6 @@ class ReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(flashcardRepository.existsById(CARD_ID)).thenReturn(true);
         lenient().when(sessionRepository.findByUserIdAndSessionDate(any(), any()))
                 .thenReturn(Optional.empty());
         lenient().when(sessionRepository.save(any(StudySession.class)))
@@ -192,5 +196,30 @@ class ReviewServiceTest {
         reviewService.submitReview(CARD_ID, USER_ID, 5);
 
         verify(sessionRepository).save(any(StudySession.class));
+    }
+
+    @Test
+    @DisplayName("Không thể review thẻ của user khác: ném ForbiddenException, không ghi dữ liệu")
+    void cannotReviewCardOwnedByAnotherUser() {
+        when(flashcardService.findCardOwnedBy(CARD_ID, USER_ID))
+                .thenThrow(new ForbiddenException("Không có quyền truy cập deck này"));
+
+        assertThatThrownBy(() -> reviewService.submitReview(CARD_ID, USER_ID, 5))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(reviewRepository, never()).save(any(CardReview.class));
+        verify(sessionRepository, never()).save(any(StudySession.class));
+    }
+
+    @Test
+    @DisplayName("Review thẻ không tồn tại: ném ResourceNotFoundException")
+    void cannotReviewMissingCard() {
+        when(flashcardService.findCardOwnedBy(CARD_ID, USER_ID))
+                .thenThrow(new ResourceNotFoundException("Không tìm thấy thẻ"));
+
+        assertThatThrownBy(() -> reviewService.submitReview(CARD_ID, USER_ID, 5))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(reviewRepository, never()).save(any(CardReview.class));
     }
 }

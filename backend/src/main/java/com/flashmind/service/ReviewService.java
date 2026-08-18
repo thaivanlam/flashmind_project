@@ -5,7 +5,6 @@ import com.flashmind.dto.response.ReviewSubmitResponse;
 import com.flashmind.entity.CardReview;
 import com.flashmind.entity.Flashcard;
 import com.flashmind.entity.StudySession;
-import com.flashmind.exception.ResourceNotFoundException;
 import com.flashmind.repository.CardReviewRepository;
 import com.flashmind.repository.FlashcardRepository;
 import com.flashmind.repository.StudySessionRepository;
@@ -30,6 +29,7 @@ public class ReviewService {
     private final CardReviewRepository reviewRepository;
     private final FlashcardRepository flashcardRepository;
     private final StudySessionRepository sessionRepository;
+    private final FlashcardService flashcardService;
 
     public List<CardReviewResponse> getTodayReviews(Long userId) {
         List<CardReview> dueReviews = reviewRepository.findDueReviews(userId, LocalDate.now());
@@ -47,13 +47,12 @@ public class ReviewService {
 
     @Transactional
     public ReviewSubmitResponse submitReview(Long cardId, Long userId, int quality) {
+        // Kiểm tra quyền sở hữu thẻ (qua deck) trước khi ghi nhận review:
+        // thẻ không tồn tại -> 404, thẻ của user khác -> 403
+        flashcardService.findCardOwnedBy(cardId, userId);
+
         CardReview review = reviewRepository.findByCardIdAndUserId(cardId, userId)
-            .orElseGet(() -> {
-                if (!flashcardRepository.existsById(cardId)) {
-                    throw new ResourceNotFoundException("Không tìm thấy thẻ");
-                }
-                return new CardReview(cardId, userId);
-            });
+            .orElseGet(() -> new CardReview(cardId, userId));
 
         applySpacedRepetition(review, quality);
         review.setLastReviewedAt(LocalDateTime.now());

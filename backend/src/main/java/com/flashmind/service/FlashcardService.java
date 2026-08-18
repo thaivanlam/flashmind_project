@@ -4,7 +4,6 @@ import com.flashmind.dto.request.FlashcardRequest;
 import com.flashmind.dto.response.FlashcardResponse;
 import com.flashmind.entity.CardReview;
 import com.flashmind.entity.Flashcard;
-import com.flashmind.exception.BusinessException;
 import com.flashmind.exception.ResourceNotFoundException;
 import com.flashmind.repository.CardReviewRepository;
 import com.flashmind.repository.FlashcardRepository;
@@ -73,7 +72,12 @@ public class FlashcardService {
         deckService.updateCardCount(card.getDeckId());
     }
 
-    private Flashcard findCardOwnedBy(Long cardId, Long userId) {
+    /**
+     * Trả về thẻ nếu user sở hữu deck chứa thẻ đó.
+     * @throws com.flashmind.exception.ResourceNotFoundException thẻ không tồn tại
+     * @throws com.flashmind.exception.ForbiddenException thẻ thuộc user khác
+     */
+    public Flashcard findCardOwnedBy(Long cardId, Long userId) {
         Flashcard card = flashcardRepository.findById(cardId)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thẻ"));
         // Verify ownership through deck

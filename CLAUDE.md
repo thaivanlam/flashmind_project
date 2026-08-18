@@ -35,7 +35,7 @@ npm run build      # tsc -b && vite build — type errors fail the build
 ```
 `npm run lint` is declared but non-functional: neither `eslint` nor an eslint config exists in the repo. Use `npx tsc -b --noEmit` for the type check instead, or add the eslint toolchain if lint is actually needed.
 
-Only test coverage in the repo is [ReviewServiceTest.java](backend/src/test/java/com/flashmind/service/ReviewServiceTest.java) (Mockito unit tests over the SM-2 math). No frontend tests, no test infra configured.
+Only test coverage in the repo is [ReviewServiceTest.java](backend/src/test/java/com/flashmind/service/ReviewServiceTest.java) (9 Mockito unit tests: the SM-2 math, plus two ownership cases asserting `submitReview` propagates `ForbiddenException` / `ResourceNotFoundException` and writes nothing). No frontend tests, no test infra configured.
 
 ## Backend architecture
 
@@ -46,7 +46,7 @@ Only test coverage in the repo is [ReviewServiceTest.java](backend/src/test/java
 - Cascade deletion is manual: `DeckService.deleteDeck` deletes flashcards then the deck; `card_reviews` rows are **not** cleaned up on deck or card deletion and are left orphaned. Any new delete path must handle its own cleanup.
 - `Deck.cardCount` is denormalized — call `DeckService.updateCardCount(deckId)` after any card insert/delete.
 
-**Ownership authorization** is enforced entirely in the service layer via `DeckService.findDeckOwnedBy(deckId, userId)`, which throws `BusinessException` on mismatch. Card-level operations resolve ownership through the parent deck (`FlashcardService.findCardOwnedBy`). `ReviewService.submitReview` scopes by `(cardId, userId)` on `card_reviews` instead. There is no `@PreAuthorize` anywhere — a new endpoint that skips these helpers has no access control.
+**Ownership authorization** is enforced entirely in the service layer via `DeckService.findDeckOwnedBy(deckId, userId)`, which throws `ForbiddenException` on mismatch (missing deck → `ResourceNotFoundException`). Card-level operations resolve ownership through the parent deck via the public `FlashcardService.findCardOwnedBy(cardId, userId)`; `ReviewService.submitReview` calls that same helper before touching `card_reviews`, so an unowned card is rejected rather than silently creating a fresh `CardReview` row. There is no `@PreAuthorize` anywhere — a new endpoint that skips these helpers has no access control.
 
 **Auth:** stateless JWT, HS256 over a Base64-decoded secret (`app.jwt.secret`). Tokens carry a `type` claim (`access` / `refresh`); `JwtAuthenticationFilter` accepts only `access`, `AuthService.refresh` only `refresh`. Invalid tokens are logged and ignored (request continues unauthenticated → 401/403 from the filter chain). Access 1h, refresh 7d. Only `/api/auth/**` and `/actuator/**` are public. Despite the README, **refresh tokens are not stored in Redis** — refresh is stateless and there is no revocation/logout path.
 
