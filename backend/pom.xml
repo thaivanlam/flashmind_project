@@ -20,6 +20,7 @@
     <properties>
         <java.version>25</java.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <anthropic.version>2.34.0</anthropic.version>
     </properties>
 
     <dependencies>
