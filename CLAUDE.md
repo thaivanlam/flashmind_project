@@ -75,3 +75,7 @@ TypeScript is strict with `noUnusedLocals` and `noUnusedParameters` on, and `tsc
 
 All backend settings are env-overridable in [application.properties](backend/src/main/resources/application.properties): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `JWT_SECRET` (Base64), `OPENAI_API_KEY` (required for AI generation). Defaults commit a dev JWT secret and assume localhost infra. Uploads cap at 5MB. `app.cors.allowed-origins` defaults to `http://localhost:5173,http://localhost:3000` — production deploys must override it.
 
+## Edit protocol
+
+Before every Edit or Write, explain in full: what the change does and why it is needed.
+Do not batch several consecutive edits without explaining each one.
