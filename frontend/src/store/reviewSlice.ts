@@ -50,7 +50,8 @@ const reviewSlice = createSlice({
         fetchTodayReviews.fulfilled,
         (state, action: PayloadAction<CardReview[]>) => {
           state.loading = false;
-          state.todayCards = action.payload;
+          // Bỏ review mồ côi (thẻ đã bị xóa) để UI không render card null
+          state.todayCards = action.payload.filter((r) => r.card != null);
           state.currentIndex = 0;
         }
       )

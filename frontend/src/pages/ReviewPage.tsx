@@ -28,6 +28,8 @@ const ReviewPage: FC = () => {
   }, [dispatch]);
 
   const currentReview = todayCards[currentIndex];
+  // Thẻ có thể null nếu review mồ côi lọt qua — không render ReviewCard khi đó
+  const currentCard = currentReview?.card ?? null;
   const isFinished = todayCards.length > 0 && currentIndex >= todayCards.length;
 
   const handleSubmit = async (quality: Quality) => {
@@ -134,9 +136,9 @@ const ReviewPage: FC = () => {
           </p>
         </div>
       ) : (
-        currentReview && (
+        currentCard && (
           <ReviewCard
-            card={currentReview.card}
+            card={currentCard}
             onSubmit={handleSubmit}
             disabled={submitting}
           />
