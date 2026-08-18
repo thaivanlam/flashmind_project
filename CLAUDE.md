@@ -35,7 +35,7 @@ npm run build      # tsc -b && vite build — type errors fail the build
 ```
 `npm run lint` is declared but non-functional: neither `eslint` nor an eslint config exists in the repo. Use `npx tsc -b --noEmit` for the type check instead, or add the eslint toolchain if lint is actually needed.
 
-Only test coverage in the repo is [ReviewServiceTest.java](backend/src/test/java/com/flashmind/service/ReviewServiceTest.java) (9 Mockito unit tests: the SM-2 math, plus two ownership cases asserting `submitReview` propagates `ForbiddenException` / `ResourceNotFoundException` and writes nothing). No frontend tests, no test infra configured.
+Test coverage is 14 Mockito unit tests in `backend/src/test/java/com/flashmind/service/`: [ReviewServiceTest.java](backend/src/test/java/com/flashmind/service/ReviewServiceTest.java) (9 — the SM-2 math, plus two ownership cases asserting `submitReview` propagates `ForbiddenException` / `ResourceNotFoundException` and writes nothing), [DeckServiceTest.java](backend/src/test/java/com/flashmind/service/DeckServiceTest.java) (3) and [FlashcardServiceTest.java](backend/src/test/java/com/flashmind/service/FlashcardServiceTest.java) (2), both asserting delete paths purge `card_reviews` in the right order and purge nothing when ownership fails. No frontend tests, no test infra configured.
 
 ## Backend architecture
 
@@ -43,7 +43,8 @@ Only test coverage in the repo is [ReviewServiceTest.java](backend/src/test/java
 
 **Entities have no JPA relationships.** `Deck`, `Flashcard`, `CardReview`, `StudySession` store plain `Long` FK columns (`userId`, `deckId`, `cardId`) with no `@ManyToOne`/`@OneToMany`, no cascades, no DB-level FK constraints. Consequences to keep in mind:
 - Joins are done manually in service code (see `ReviewService.getTodayReviews`, which batch-loads cards by id and zips them with reviews).
-- Cascade deletion is manual: `DeckService.deleteDeck` deletes flashcards then the deck; `card_reviews` rows are **not** cleaned up on deck or card deletion and are left orphaned. Any new delete path must handle its own cleanup.
+- Cascade deletion is manual and every delete path must do its own cleanup, `card_reviews` included. `DeckService.deleteDeck` collects card ids (`FlashcardRepository.findIdsByDeckId`), bulk-deletes their reviews, then deletes the flashcards and the deck — in that order, since the ids are gone once the cards are. `FlashcardService.deleteCard` deletes the card's review first. Skipping this leaves orphaned `card_reviews` rows, which surface as `card: null` in `/api/reviews/today` and crash the review UI.
+- Defense in depth against orphans already in the DB: `CardReviewRepository.findDueReviews` / `findDueCardIds` filter on `EXISTS (… Flashcard …)`, `ReviewService.getTodayReviews` drops reviews whose card didn't load, and `SchedulerService.cleanupOrphanedReviews` (cron `0 0 3 * * *`) purges leftovers.
 - `Deck.cardCount` is denormalized — call `DeckService.updateCardCount(deckId)` after any card insert/delete.
 
 **Ownership authorization** is enforced entirely in the service layer via `DeckService.findDeckOwnedBy(deckId, userId)`, which throws `ForbiddenException` on mismatch (missing deck → `ResourceNotFoundException`). Card-level operations resolve ownership through the parent deck via the public `FlashcardService.findCardOwnedBy(cardId, userId)`; `ReviewService.submitReview` calls that same helper before touching `card_reviews`, so an unowned card is rejected rather than silently creating a fresh `CardReview` row. There is no `@PreAuthorize` anywhere — a new endpoint that skips these helpers has no access control.
@@ -73,3 +74,4 @@ TypeScript is strict with `noUnusedLocals` and `noUnusedParameters` on, and `tsc
 ## Configuration
 
 All backend settings are env-overridable in [application.properties](backend/src/main/resources/application.properties): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `JWT_SECRET` (Base64), `OPENAI_API_KEY` (required for AI generation). Defaults commit a dev JWT secret and assume localhost infra. Uploads cap at 5MB. `app.cors.allowed-origins` defaults to `http://localhost:5173,http://localhost:3000` — production deploys must override it.
+
