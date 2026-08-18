@@ -5,6 +5,7 @@ import com.flashmind.dto.response.DeckResponse;
 import com.flashmind.entity.Deck;
 import com.flashmind.exception.ForbiddenException;
 import com.flashmind.exception.ResourceNotFoundException;
+import com.flashmind.repository.CardReviewRepository;
 import com.flashmind.repository.DeckRepository;
 import com.flashmind.repository.FlashcardRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class DeckService {
 
     private final DeckRepository deckRepository;
     private final FlashcardRepository flashcardRepository;
+    private final CardReviewRepository cardReviewRepository;
 
     public List<DeckResponse> listUserDecks(Long userId) {
         return deckRepository.findByUserIdOrderByCreatedAtDesc(userId)
@@ -55,6 +57,14 @@ public class DeckService {
     @Transactional
     public void deleteDeck(Long deckId, Long userId) {
         Deck deck = findDeckOwnedBy(deckId, userId);
+
+        // DB không có FK/cascade nên phải tự dọn review trước, nếu không
+        // card_reviews sẽ còn lại bản ghi mồ côi trỏ tới thẻ đã bị xóa.
+        List<Long> cardIds = flashcardRepository.findIdsByDeckId(deck.getId());
+        if (!cardIds.isEmpty()) {
+            cardReviewRepository.deleteByCardIdIn(cardIds);
+        }
+
         flashcardRepository.deleteByDeckId(deck.getId());
         deckRepository.delete(deck);
     }

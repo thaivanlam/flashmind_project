@@ -68,6 +68,9 @@ public class FlashcardService {
     @Transactional
     public void deleteCard(Long cardId, Long userId) {
         Flashcard card = findCardOwnedBy(cardId, userId);
+        // Dọn review trước khi xóa thẻ — DB không có FK cascade nên nếu bỏ qua
+        // bước này card_reviews sẽ giữ lại bản ghi trỏ tới thẻ không còn tồn tại.
+        cardReviewRepository.deleteByCardId(cardId);
         flashcardRepository.delete(card);
         deckService.updateCardCount(card.getDeckId());
     }
