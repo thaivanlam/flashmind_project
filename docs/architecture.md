@@ -1,6 +1,6 @@
-# Kiến trúc tổng thể
+# Architecture
 
-## Thành phần
+## Components
 
 ```
 ┌──────────────────────┐         ┌────────────────────────────┐
@@ -13,60 +13,61 @@
                     ▼                          ▼                          ▼
             ┌───────────────┐          ┌───────────────┐          ┌───────────────┐
             │ PostgreSQL 16 │          │    Redis 7    │          │  OpenAI API   │
-            │  (dữ liệu)    │          │ (chỉ ghi cache│          │ (gpt-4o-mini) │
+            │    (data)     │          │ (write-only   │          │ (gpt-4o-mini) │
             └───────────────┘          │  due cards)   │          └───────────────┘
                                        └───────────────┘
 ```
 
-Backend là **một monolith duy nhất**, không tách module. Frontend là SPA build tĩnh,
-phục vụ qua nginx trong production và qua Vite dev server khi phát triển.
+The backend is **a single monolith**, not split into modules. The frontend is a statically
+built SPA, served by nginx in production and by the Vite dev server during development.
 
-## Đường đi của một request
+## The path of a request
 
-1. Trình duyệt gọi `/api/...`.
-   - Dev: Vite proxy chuyển tiếp sang `http://localhost:8080`.
-   - Production: nginx `location /api/` proxy sang `backend:8080`.
-2. `JwtAuthenticationFilter` đọc header `Authorization: Bearer <token>`, xác thực chữ ký,
-   yêu cầu claim `type = access`, rồi đặt `UserPrincipal` vào `SecurityContextHolder`.
-   Token hỏng chỉ được ghi log và **bỏ qua** — request đi tiếp ở trạng thái chưa xác thực
-   và bị filter chain chặn bằng 401/403.
-3. Controller lấy `userId` qua `AuthHelper.getCurrentUserId()` và truyền xuống service
-   như một tham số tường minh.
-4. Service kiểm tra quyền sở hữu, thực thi nghiệp vụ, gọi repository.
-5. Lỗi ném ra được `GlobalExceptionHandler` chuyển thành JSON `{timestamp, status, message}`.
+1. The browser calls `/api/...`.
+   - Dev: the Vite proxy forwards to `http://localhost:8080`.
+   - Production: nginx `location /api/` proxies to `backend:8080`.
+2. `JwtAuthenticationFilter` reads the `Authorization: Bearer <token>` header, verifies the
+   signature, requires the claim `type = access`, then puts a `UserPrincipal` into the
+   `SecurityContextHolder`. A broken token is only logged and **ignored** — the request
+   continues unauthenticated and is stopped by the filter chain with 401/403.
+3. The controller obtains `userId` via `AuthHelper.getCurrentUserId()` and passes it down to
+   the service as an explicit argument.
+4. The service checks ownership, runs the business logic, calls the repository.
+5. Thrown errors are turned by `GlobalExceptionHandler` into JSON `{timestamp, status, message}`.
 
-## Các quyết định thiết kế xuyên suốt
+## Cross-cutting design decisions
 
-### Service không đọc security context
+### Services do not read the security context
 
-`AuthHelper` chỉ được gọi trong tầng controller. Mọi phương thức service chạm tới dữ liệu
-người dùng đều nhận `userId` làm tham số. Điều này giữ cho service test được bằng Mockito
-thuần và không phụ thuộc vào Spring Security. **Giữ nguyên quy ước này khi thêm endpoint mới.**
+`AuthHelper` is only called in the controller layer. Every service method that touches user
+data receives `userId` as a parameter. This keeps services testable with plain Mockito and
+independent of Spring Security. **Preserve this convention when adding new endpoints.**
 
-### Entity không có quan hệ JPA
+### Entities have no JPA relationships
 
-`Deck`, `Flashcard`, `CardReview`, `StudySession` chỉ lưu cột khóa ngoại kiểu `Long`
-(`userId`, `deckId`, `cardId`) — không `@ManyToOne`/`@OneToMany`, không cascade,
-không ràng buộc FK ở tầng database. Hệ quả và cách xử lý xem [data-model.md](data-model.md).
+`Deck`, `Flashcard`, `CardReview` and `StudySession` only store `Long` foreign key columns
+(`userId`, `deckId`, `cardId`) — no `@ManyToOne`/`@OneToMany`, no cascades, no FK constraints
+at the database level. Consequences and how to handle them: [data-model.md](data-model.md).
 
-### Phân quyền nằm ở tầng service
+### Authorization lives in the service layer
 
-Không có `@PreAuthorize` ở bất kỳ đâu. Quyền sở hữu được kiểm tra bằng
-`DeckService.findDeckOwnedBy(deckId, userId)` và `FlashcardService.findCardOwnedBy(cardId, userId)`.
-Endpoint mới nào bỏ qua hai helper này là **không có kiểm soát truy cập**.
+There is no `@PreAuthorize` anywhere. Ownership is checked with
+`DeckService.findDeckOwnedBy(deckId, userId)` and `FlashcardService.findCardOwnedBy(cardId, userId)`.
+Any new endpoint that skips these two helpers has **no access control**.
 
-### Redis chưa phải đường đọc
+### Redis is not a read path yet
 
-`SchedulerService.cacheDailyDueCards` ghi key `due_cards:{userId}` (TTL 25 giờ), nhưng
-không có code nào đọc lại. Coi đây là phần chưa hoàn thiện, đừng dựa vào nó như một cache thật.
+`SchedulerService.cacheDailyDueCards` writes the key `due_cards:{userId}` (TTL 25 hours), but
+no code reads it back. Treat it as unfinished; do not rely on it as a real cache.
 
-### Schema do Hibernate sinh
+### The schema is generated by Hibernate
 
-`spring.jpa.hibernate.ddl-auto=update`, không có Flyway/Liquibase. Sửa entity **chính là**
-sửa schema; các thay đổi mang tính phá hủy (xóa cột, đổi kiểu) sẽ không được Hibernate áp dụng.
+`spring.jpa.hibernate.ddl-auto=update`, no Flyway/Liquibase. Editing an entity **is** the
+schema change; destructive changes (dropping a column, changing a type) will not be applied
+by Hibernate.
 
-## Tài liệu liên quan
+## Related documents
 
-- Chi tiết từng lớp backend: [backend.md](backend.md)
-- Chi tiết SPA: [frontend.md](frontend.md)
-- Hợp đồng API: [api-reference.md](api-reference.md)
+- Backend layers in detail: [backend.md](backend.md)
+- The SPA in detail: [frontend.md](frontend.md)
+- API contract: [api-reference.md](api-reference.md)

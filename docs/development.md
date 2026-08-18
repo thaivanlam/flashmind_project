@@ -1,31 +1,31 @@
-# Phát triển
+# Development
 
-## Yêu cầu
+## Requirements
 
-- Docker + Docker Compose (cách chạy được khuyến nghị)
-- Hoặc chạy tay: JDK 25, Maven (**không có Maven wrapper** — dùng `mvn` của hệ thống),
+- Docker + Docker Compose (the recommended way to run everything)
+- Or, running by hand: JDK 25, Maven (**there is no Maven wrapper** — use the system `mvn`),
   Node.js 20+, PostgreSQL 16, Redis 7
-- Một OpenAI API key (chỉ cần cho chức năng sinh thẻ bằng AI)
+- An OpenAI API key (only needed for AI card generation)
 
-## Chạy toàn bộ bằng Docker
+## Running everything with Docker
 
 ```bash
-cp .env.example .env          # rồi điền OPENAI_API_KEY
+cp .env.example .env          # then fill in OPENAI_API_KEY
 docker-compose up -d
 docker-compose logs -f backend
 ```
 
-| Dịch vụ | Cổng |
+| Service | Port |
 |---------|------|
 | Frontend (nginx) | http://localhost:5173 |
 | Backend | http://localhost:8080 |
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
 
-Backend chờ postgres và redis healthy mới khởi động. Dữ liệu Postgres nằm trong volume
-`pgdata`, nên `docker-compose down` không mất dữ liệu (`down -v` thì mất).
+The backend waits for postgres and redis to be healthy before starting. Postgres data lives in
+the `pgdata` volume, so `docker-compose down` does not lose data (`down -v` does).
 
-Chỉ dựng hạ tầng để phát triển local:
+To bring up only the infrastructure for local development:
 
 ```bash
 docker-compose up postgres redis -d
@@ -40,37 +40,37 @@ mvn spring-boot:run
 mvn clean package -DskipTests
 ```
 
-### Test
+### Tests
 
 ```bash
-mvn test                                                       # toàn bộ
-mvn test -Dtest=ReviewServiceTest                              # một lớp
-mvn test -Dtest=ReviewServiceTest#firstReviewWithGoodQuality   # một phương thức
+mvn test                                                       # everything
+mvn test -Dtest=ReviewServiceTest                              # one class
+mvn test -Dtest=ReviewServiceTest#firstReviewWithGoodQuality   # one method
 ```
 
-Hiện có 14 unit test Mockito trong `backend/src/test/java/com/flashmind/service/`
-(`ReviewServiceTest` 9, `DeckServiceTest` 3, `FlashcardServiceTest` 2). Chúng chạy độc lập,
-**không cần database hay Redis**. Không có test tích hợp và không có test controller.
+There are currently 14 Mockito unit tests in `backend/src/test/java/com/flashmind/service/`
+(`ReviewServiceTest` 9, `DeckServiceTest` 3, `FlashcardServiceTest` 2). They run standalone and
+**need neither a database nor Redis**. There are no integration tests and no controller tests.
 
 ## Frontend (`frontend/`)
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173, proxy /api → localhost:8080
+npm run dev        # http://localhost:5173, proxies /api → localhost:8080
 npm run build      # tsc -b && vite build
-npm run preview    # xem thử bản build
+npm run preview    # preview the production build
 ```
 
-### Lưu ý
+### Notes
 
-- `npm run build` chạy `tsc -b` trước, và `tsconfig.json` bật `noUnusedLocals` +
-  `noUnusedParameters` — **một import thừa cũng đủ làm hỏng build**.
-- Kiểm tra kiểu mà không build: `npx tsc -b --noEmit`.
-- `npm run lint` **không chạy được**: repo không cài eslint và không có file cấu hình eslint.
-  Dùng lệnh kiểm tra kiểu ở trên, hoặc bổ sung eslint nếu thực sự cần lint.
-- Không có test frontend và chưa có hạ tầng test nào được cấu hình.
+- `npm run build` runs `tsc -b` first, and `tsconfig.json` enables `noUnusedLocals` +
+  `noUnusedParameters` — **a single unused import is enough to break the build**.
+- To type-check without building: `npx tsc -b --noEmit`.
+- `npm run lint` **does not work**: the repo has no eslint installed and no eslint config file.
+  Use the type check above, or add eslint if linting is actually needed.
+- There are no frontend tests and no test infrastructure is configured.
 
-## Thử nhanh bằng curl
+## A quick try with curl
 
 ```bash
 curl -X POST http://localhost:8080/api/auth/register \
@@ -82,27 +82,27 @@ curl -X POST http://localhost:8080/api/auth/login \
   -d '{"email":"test@test.com","password":"123456"}'
 ```
 
-Lấy `accessToken` từ response rồi gọi tiếp:
+Take `accessToken` from the response and carry on:
 
 ```bash
 curl http://localhost:8080/api/decks -H "Authorization: Bearer <accessToken>"
 ```
 
-## Luồng dùng thử
+## Demo flow
 
-1. Đăng ký tại `/register`
-2. Tạo deck mới
-3. Vào chi tiết deck → upload PDF/TXT → AI sinh thẻ
-4. Vào **Ôn tập** → lật thẻ → chấm điểm 0–5
-5. Vào **Thống kê** để xem streak và tiến độ
+1. Register at `/register`
+2. Create a new deck
+3. Open the deck → upload a PDF/TXT → the AI generates the cards
+4. Go to **Review** → flip a card → grade it 0–5
+5. Go to **Analytics** to see your streak and progress
 
-## Quy ước khi viết code
+## Coding conventions
 
-- Comment, log và thông báo lỗi cho người dùng viết bằng **tiếng Việt**;
-  tên định danh và hợp đồng API bằng **tiếng Anh**.
-- Controller không chứa nghiệp vụ; service nhận `userId` làm tham số, không đọc
+- In the code, comments, log messages and user-facing error strings are written in
+  **Vietnamese**; identifiers and API contracts in **English**. Documentation is in English.
+- Controllers hold no business logic; services take `userId` as a parameter and never read the
   security context.
-- Endpoint mới phải kiểm tra quyền qua `findDeckOwnedBy` / `findCardOwnedBy`
-  (xem [backend.md](backend.md)).
-- Mọi đường xóa phải tự dọn `card_reviews` (xem [data-model.md](data-model.md)).
-- Thay đổi code thì cập nhật tài liệu tương ứng (xem [maintaining-docs.md](maintaining-docs.md)).
+- A new endpoint must check permissions with `findDeckOwnedBy` / `findCardOwnedBy`
+  (see [backend.md](backend.md)).
+- Every delete path must clean up `card_reviews` itself (see [data-model.md](data-model.md)).
+- When code changes, update the matching documentation (see [maintaining-docs.md](maintaining-docs.md)).

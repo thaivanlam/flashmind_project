@@ -1,25 +1,25 @@
 # Backend
 
-Spring Boot 3.5.16 trên Java 25, package gốc `com.flashmind`, entrypoint
+Spring Boot 3.5.16 on Java 25, root package `com.flashmind`, entrypoint
 [FlashmindApplication.java](../backend/src/main/java/com/flashmind/FlashmindApplication.java).
 
-## Cấu trúc package
+## Package structure
 
-| Package | Vai trò |
-|---------|---------|
+| Package | Role |
+|---------|------|
 | `config` | `SecurityConfig`, `RedisConfig`, `WebClientConfig` |
-| `controller` | 5 REST controller, chỉ điều phối — không chứa nghiệp vụ |
-| `service` | Toàn bộ nghiệp vụ, kiểm tra quyền sở hữu, thuật toán SM-2 |
-| `repository` | Spring Data JPA repository |
-| `entity` | 5 entity, không có quan hệ JPA |
-| `dto` | `dto.request` (có Bean Validation) và `dto.response` (có factory `from(...)`) |
-| `exception` | 3 exception nghiệp vụ + `GlobalExceptionHandler` |
+| `controller` | 5 REST controllers, orchestration only — no business logic |
+| `service` | All business logic, ownership checks, the SM-2 algorithm |
+| `repository` | Spring Data JPA repositories |
+| `entity` | 5 entities, no JPA relationships |
+| `dto` | `dto.request` (with Bean Validation) and `dto.response` (with `from(...)` factories) |
+| `exception` | 3 business exceptions + `GlobalExceptionHandler` |
 | `security` | `JwtUtil`, `JwtAuthenticationFilter`, `UserPrincipal`, `AuthHelper` |
 
-## Controller
+## Controllers
 
-Controller là lớp mỏng: lấy `userId` từ `AuthHelper.getCurrentUserId()`, gọi service, trả
-`ResponseEntity`. Không controller nào tự kiểm tra quyền.
+Controllers are a thin layer: take `userId` from `AuthHelper.getCurrentUserId()`, call the
+service, return a `ResponseEntity`. No controller checks permissions itself.
 
 | Controller | Base path |
 |------------|-----------|
@@ -29,123 +29,127 @@ Controller là lớp mỏng: lấy `userId` từ `AuthHelper.getCurrentUserId()`
 | [ReviewController](../backend/src/main/java/com/flashmind/controller/ReviewController.java) | `/api/reviews` |
 | [AnalyticsController](../backend/src/main/java/com/flashmind/controller/AnalyticsController.java) | `/api/analytics` |
 
-Đặc tả chi tiết: [api-reference.md](api-reference.md).
+Detailed specification: [api-reference.md](api-reference.md).
 
-## Bảo mật
+## Security
 
 ### JWT
 
-[JwtUtil](../backend/src/main/java/com/flashmind/security/JwtUtil.java) ký HS256 bằng khóa
-lấy từ `app.jwt.secret` **sau khi giải Base64**. Mỗi token mang:
+[JwtUtil](../backend/src/main/java/com/flashmind/security/JwtUtil.java) signs with HS256 using
+a key taken from `app.jwt.secret` **after Base64-decoding it**. Every token carries:
 
-- `sub` — email người dùng
-- `userId` — id người dùng
-- `type` — `access` hoặc `refresh`
+- `sub` — the user's email
+- `userId` — the user's id
+- `type` — `access` or `refresh`
 
-Hạn dùng: access **1 giờ** (`app.jwt.access-expiration=3600000`), refresh **7 ngày**
+Lifetimes: access **1 hour** (`app.jwt.access-expiration=3600000`), refresh **7 days**
 (`app.jwt.refresh-expiration=604800000`).
 
-`JwtAuthenticationFilter` chỉ chấp nhận `type = access`; `AuthService.refresh` chỉ chấp nhận
-`type = refresh`. Token không hợp lệ được log ở mức WARN rồi bỏ qua.
+`JwtAuthenticationFilter` accepts only `type = access`; `AuthService.refresh` accepts only
+`type = refresh`. Invalid tokens are logged at WARN level and then ignored.
 
-**Refresh token không được lưu ở đâu cả** — không Redis, không database. Vì vậy hệ thống
-hiện **không có logout hay thu hồi token**; token chỉ hết hiệu lực khi hết hạn.
+**Refresh tokens are not stored anywhere** — not in Redis, not in the database. As a result the
+system currently has **no logout and no token revocation**; a token only stops working when it
+expires.
 
 ### Filter chain
 
 [SecurityConfig](../backend/src/main/java/com/flashmind/config/SecurityConfig.java):
-CSRF tắt, session `STATELESS`, mật khẩu băm bằng `BCryptPasswordEncoder`.
-Chỉ `/api/auth/**` và `/actuator/**` là public, mọi đường dẫn khác yêu cầu xác thực.
-CORS lấy origin từ `app.cors.allowed-origins`, cho phép `GET, POST, PUT, DELETE, OPTIONS`,
-mọi header, `allowCredentials = true`, `maxAge = 3600`.
+CSRF disabled, `STATELESS` sessions, passwords hashed with `BCryptPasswordEncoder`.
+Only `/api/auth/**` and `/actuator/**` are public, every other path requires authentication.
+CORS takes its origins from `app.cors.allowed-origins`, allows `GET, POST, PUT, DELETE, OPTIONS`,
+all headers, `allowCredentials = true`, `maxAge = 3600`.
 
-### Phân quyền
+### Authorization
 
 ```java
-Deck deck = deckService.findDeckOwnedBy(deckId, userId);   // 404 nếu không tồn tại, 403 nếu khác chủ
-Flashcard card = flashcardService.findCardOwnedBy(cardId, userId); // quyền suy ra từ deck cha
+Deck deck = deckService.findDeckOwnedBy(deckId, userId);   // 404 if missing, 403 if owned by someone else
+Flashcard card = flashcardService.findCardOwnedBy(cardId, userId); // ownership derived from the parent deck
 ```
 
-`findCardOwnedBy` là `public` vì `ReviewService` cũng dùng nó trước khi ghi `card_reviews` —
-nhờ vậy thẻ không thuộc sở hữu bị từ chối thay vì âm thầm tạo bản ghi review mới.
+`findCardOwnedBy` is `public` because `ReviewService` also uses it before writing to
+`card_reviews` — that way an unowned card is rejected instead of silently creating a new
+review row.
 
-## Service
+## Services
 
 ### AuthService
 
-`register` chặn email trùng (`BusinessException` → 400), băm mật khẩu, trả về cặp token.
-`login` trả cùng một thông báo `"Email hoặc mật khẩu không đúng"` cho cả hai trường hợp sai
-email và sai mật khẩu. `refresh` cấp **cả access lẫn refresh token mới**.
+`register` rejects duplicate emails (`BusinessException` → 400), hashes the password and
+returns a token pair. `login` returns the same message `"Email hoặc mật khẩu không đúng"` for
+both a wrong email and a wrong password. `refresh` issues **both a new access and a new
+refresh token**.
 
 ### DeckService
 
-CRUD deck cộng hai helper quan trọng:
+Deck CRUD plus two important helpers:
 
-- `findDeckOwnedBy(deckId, userId)` — điểm kiểm tra quyền duy nhất của toàn hệ thống.
-- `updateCardCount(deckId)` — đồng bộ lại cột phi chuẩn hóa `Deck.cardCount`.
-  **Gọi sau mọi thao tác thêm/xóa thẻ.**
+- `findDeckOwnedBy(deckId, userId)` — the single ownership checkpoint of the whole system.
+- `updateCardCount(deckId)` — resynchronizes the denormalized `Deck.cardCount` column.
+  **Call it after every card insert or delete.**
 
-`deleteDeck` phải dọn dữ liệu theo đúng thứ tự: lấy id các thẻ → xóa `card_reviews` của
-chúng → xóa flashcards → xóa deck. Đảo thứ tự sẽ mất id và để lại review mồ côi
-(xem [data-model.md](data-model.md)).
+`deleteDeck` must clean up in exactly this order: collect the card ids → delete their
+`card_reviews` → delete the flashcards → delete the deck. Reversing the order loses the ids and
+leaves orphaned reviews behind (see [data-model.md](data-model.md)).
 
 ### FlashcardService
 
-CRUD thẻ. `createCard` tạo kèm một `CardReview` với `nextReviewDate = hôm nay` để thẻ mới
-xuất hiện ngay trong danh sách ôn. `deleteCard` xóa review trước rồi mới xóa thẻ, sau đó
-cập nhật `cardCount`.
+Card CRUD. `createCard` also creates a `CardReview` with `nextReviewDate = today` so a new card
+shows up in the review list immediately. `deleteCard` deletes the review first and the card
+after, then updates `cardCount`.
 
 ### ReviewService
 
-- `getTodayReviews(userId)` — nạp review đến hạn, nạp thẻ theo lô bằng `findAllById`, rồi
-  ghép thủ công (không có quan hệ JPA nên không có join tự động). Review nào không nạp được
-  thẻ sẽ bị loại, đảm bảo client không bao giờ nhận `card: null`.
-- `submitReview(cardId, userId, quality)` — kiểm tra quyền sở hữu, áp dụng SM-2, ghi
-  `lastReviewedAt`, cập nhật `StudySession` của hôm nay (`quality >= 3` tính là đúng),
-  trả về lịch ôn kế tiếp.
-- `applySpacedRepetition` — **nguồn chân lý duy nhất** của thuật toán, chi tiết ở
-  [spaced-repetition.md](spaced-repetition.md). `MASTERY_THRESHOLD = 5` được lặp lại
-  trong `AnalyticsService`; sửa một nơi thì phải sửa cả hai.
+- `getTodayReviews(userId)` — loads the due reviews, batch-loads the cards with `findAllById`,
+  then zips them manually (there are no JPA relationships, so there is no automatic join).
+  Reviews whose card could not be loaded are dropped, guaranteeing the client never receives
+  `card: null`.
+- `submitReview(cardId, userId, quality)` — checks ownership, applies SM-2, writes
+  `lastReviewedAt`, updates today's `StudySession` (`quality >= 3` counts as correct) and
+  returns the next review schedule.
+- `applySpacedRepetition` — the **single source of truth** for the algorithm, detailed in
+  [spaced-repetition.md](spaced-repetition.md). `MASTERY_THRESHOLD = 5` is duplicated in
+  `AnalyticsService`; changing one means changing both.
 
 ### AnalyticsService
 
-Tổng hợp `StudySession` trong 30 ngày gần nhất, lấp ngày trống bằng số 0.
+Aggregates `StudySession` rows over the last 30 days, filling empty days with zeros.
 
-- `totalCardsReviewed` — **chỉ cộng trong 30 ngày đó**, không phải tổng toàn thời gian.
-- `masteredCards` — đếm `CardReview` có `repetitionCount >= 5`.
-- `currentStreak` — đếm lùi từ hôm nay; nếu hôm nay chưa học thì bắt đầu đếm từ hôm qua,
-  nên chuỗi không bị đứt cho tới hết ngày.
+- `totalCardsReviewed` — **only sums those 30 days**, not all time.
+- `masteredCards` — counts `CardReview` rows with `repetitionCount >= 5`.
+- `currentStreak` — counts backwards from today; if today has no study yet, counting starts
+  from yesterday, so the streak does not break until the day is over.
 
 ### AiGenerationService
 
-Luồng: kiểm tra quyền deck → `FileParsingService.extractText` → dựng prompt → gọi OpenAI →
-parse và lưu thẻ → `updateCardCount`.
+The flow: check deck ownership → `FileParsingService.extractText` → build the prompt → call
+OpenAI → parse and save the cards → `updateCardCount`.
 
-Gọi OpenAI bằng `WebClient` (WebFlux) nhưng `.block()` — đồng bộ trong thread của request.
-Tham số: `temperature 0.3`, `response_format: json_object`, timeout **60 giây**.
+OpenAI is called with `WebClient` (WebFlux) but `.block()`ed — synchronous, on the request
+thread. Parameters: `temperature 0.3`, `response_format: json_object`, timeout **60 seconds**.
 
-Bộ parse cố tình dễ dãi: chấp nhận mảng trần, khóa `flashcards`, khóa `cards`, hoặc trường
-kiểu mảng đầu tiên tìm thấy. Thẻ thiếu `front` hoặc `back` bị bỏ qua. Mỗi thẻ sinh ra đều
-kèm một `CardReview` đến hạn ngay hôm nay. Mọi thất bại đều nổi lên dưới dạng
+The parser is deliberately tolerant: it accepts a bare array, a `flashcards` key, a `cards` key,
+or the first array-valued field it finds. Cards missing `front` or `back` are skipped. Every
+generated card comes with a `CardReview` due today. All failures surface as a
 `BusinessException` → HTTP 400.
 
 ### FileParsingService
 
-Chỉ nhận `.pdf` (PDFBox) và `.txt` (UTF-8). File rỗng hoặc đuôi khác → `BusinessException`.
-Văn bản bị **cắt còn 8000 ký tự** để giới hạn chi phí token. Giới hạn dung lượng upload là
-5MB, đặt ở `spring.servlet.multipart.max-file-size`.
+Accepts only `.pdf` (PDFBox) and `.txt` (UTF-8). An empty file or any other extension →
+`BusinessException`. The text is **truncated to 8000 characters** to cap token spend. The upload
+size limit is 5MB, set by `spring.servlet.multipart.max-file-size`.
 
 ### SchedulerService
 
-| Cron | Phương thức | Việc làm |
-|------|-------------|----------|
-| `0 0 0 * * *` | `cacheDailyDueCards` | Ghi `due_cards:{userId}` vào Redis, TTL 25 giờ. **Chưa có ai đọc.** |
-| `0 0 3 * * *` | `cleanupOrphanedReviews` | Xóa `card_reviews` trỏ tới thẻ không còn tồn tại |
+| Cron | Method | What it does |
+|------|--------|--------------|
+| `0 0 0 * * *` | `cacheDailyDueCards` | Writes `due_cards:{userId}` to Redis, TTL 25 hours. **Nothing reads it yet.** |
+| `0 0 3 * * *` | `cleanupOrphanedReviews` | Deletes `card_reviews` pointing at cards that no longer exist |
 
-## Xử lý lỗi
+## Error handling
 
 [GlobalExceptionHandler](../backend/src/main/java/com/flashmind/exception/GlobalExceptionHandler.java)
-trả về `{timestamp, status, message}` cho mọi lỗi:
+returns `{timestamp, status, message}` for every error:
 
 | Exception | HTTP |
 |-----------|------|
@@ -153,18 +157,18 @@ trả về `{timestamp, status, message}` cho mọi lỗi:
 | `MethodArgumentNotValidException` (validation) | 400 |
 | `ForbiddenException` | 403 |
 | `ResourceNotFoundException` | 404 |
-| `Exception` (còn lại) | 500 |
+| `Exception` (anything else) | 500 |
 
-Lỗi phân quyền phải dùng `ForbiddenException` (→ 403), **không** dùng `BusinessException`.
+Authorization failures must use `ForbiddenException` (→ 403), **not** `BusinessException`.
 
-## Test
+## Tests
 
-14 unit test Mockito trong `backend/src/test/java/com/flashmind/service/`:
+14 Mockito unit tests in `backend/src/test/java/com/flashmind/service/`:
 
-| Lớp test | Số test | Phạm vi |
-|----------|---------|---------|
-| [ReviewServiceTest](../backend/src/test/java/com/flashmind/service/ReviewServiceTest.java) | 9 | Toán SM-2, cộng 2 ca kiểm tra quyền sở hữu của `submitReview` |
-| [DeckServiceTest](../backend/src/test/java/com/flashmind/service/DeckServiceTest.java) | 3 | Đường xóa deck dọn `card_reviews` đúng thứ tự |
-| [FlashcardServiceTest](../backend/src/test/java/com/flashmind/service/FlashcardServiceTest.java) | 2 | Đường xóa thẻ dọn review, và không dọn gì khi sai quyền |
+| Test class | Tests | Scope |
+|------------|-------|-------|
+| [ReviewServiceTest](../backend/src/test/java/com/flashmind/service/ReviewServiceTest.java) | 9 | The SM-2 math, plus 2 ownership cases for `submitReview` |
+| [DeckServiceTest](../backend/src/test/java/com/flashmind/service/DeckServiceTest.java) | 3 | The deck delete path purges `card_reviews` in the right order |
+| [FlashcardServiceTest](../backend/src/test/java/com/flashmind/service/FlashcardServiceTest.java) | 2 | The card delete path purges the review, and purges nothing when ownership fails |
 
-Không có test tích hợp, không có test controller. Cách chạy: [development.md](development.md).
+No integration tests, no controller tests. How to run them: [development.md](development.md).

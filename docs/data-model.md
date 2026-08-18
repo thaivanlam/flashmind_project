@@ -1,73 +1,74 @@
-# Mô hình dữ liệu
+# Data model
 
-PostgreSQL 16. Schema do `spring.jpa.hibernate.ddl-auto=update` sinh ra từ entity —
-**không có Flyway/Liquibase, không có file migration**. Sửa entity chính là sửa schema;
-thay đổi mang tính phá hủy (xóa cột, đổi kiểu) sẽ không được Hibernate áp dụng lên DB có sẵn.
+PostgreSQL 16. The schema is generated from the entities by
+`spring.jpa.hibernate.ddl-auto=update` — **no Flyway/Liquibase, no migration files**. Editing an
+entity is the schema change; destructive changes (dropping a column, changing a type) will not
+be applied by Hibernate to an existing database.
 
-## Bảng
+## Tables
 
 ### `users`
 
-| Cột | Kiểu | Ghi chú |
-|-----|------|---------|
+| Column | Type | Notes |
+|--------|------|-------|
 | `id` | bigserial PK | |
 | `email` | text | unique, not null |
-| `password` | text | not null, băm BCrypt |
+| `password` | text | not null, BCrypt hash |
 | `full_name` | text | |
-| `created_at` | timestamp | not null, đặt trong `@PrePersist` |
+| `created_at` | timestamp | not null, set in `@PrePersist` |
 
 ### `decks`
 
-| Cột | Kiểu | Ghi chú |
-|-----|------|---------|
+| Column | Type | Notes |
+|--------|------|-------|
 | `id` | bigserial PK | |
-| `user_id` | bigint | not null, **không có FK** |
+| `user_id` | bigint | not null, **no FK** |
 | `title` | text | not null |
 | `description` | text | |
 | `language` | varchar(10) | |
-| `card_count` | int | **phi chuẩn hóa**, mặc định 0 |
+| `card_count` | int | **denormalized**, default 0 |
 | `created_at` | timestamp | not null |
 
 ### `flashcards`
 
-| Cột | Kiểu | Ghi chú |
-|-----|------|---------|
+| Column | Type | Notes |
+|--------|------|-------|
 | `id` | bigserial PK | |
-| `deck_id` | bigint | not null, **không có FK** |
+| `deck_id` | bigint | not null, **no FK** |
 | `front` | text | not null |
 | `back` | text | not null |
 | `hint` | text | |
-| `is_ai_generated` | boolean | mặc định false |
+| `is_ai_generated` | boolean | default false |
 | `created_at` | timestamp | not null |
 
 ### `card_reviews`
 
-| Cột | Kiểu | Ghi chú |
-|-----|------|---------|
+| Column | Type | Notes |
+|--------|------|-------|
 | `id` | bigserial PK | |
 | `card_id` | bigint | not null |
 | `user_id` | bigint | not null |
-| `interval_days` | int | mặc định 0 |
-| `easiness_factor` | double | mặc định 2.5 |
-| `repetition_count` | int | mặc định 0 |
+| `interval_days` | int | default 0 |
+| `easiness_factor` | double | default 2.5 |
+| `repetition_count` | int | default 0 |
 | `next_review_date` | date | |
 | `last_reviewed_at` | timestamp | |
 
-Ràng buộc unique `(card_id, user_id)` — mỗi người dùng có tối đa một bản ghi lịch ôn cho mỗi thẻ.
+Unique constraint `(card_id, user_id)` — each user has at most one schedule row per card.
 
 ### `study_sessions`
 
-| Cột | Kiểu | Ghi chú |
-|-----|------|---------|
+| Column | Type | Notes |
+|--------|------|-------|
 | `id` | bigserial PK | |
 | `user_id` | bigint | not null |
 | `session_date` | date | not null |
-| `cards_reviewed` | int | mặc định 0 |
-| `correct_count` | int | mặc định 0 |
+| `cards_reviewed` | int | default 0 |
+| `correct_count` | int | default 0 |
 
-Ràng buộc unique `(user_id, session_date)` — mỗi người dùng một bản ghi mỗi ngày.
+Unique constraint `(user_id, session_date)` — one row per user per day.
 
-## Quan hệ (chỉ tồn tại về mặt logic)
+## Relationships (logical only)
 
 ```
 users 1─* decks 1─* flashcards 1─1 card_reviews
@@ -75,55 +76,56 @@ users 1─* card_reviews
 users 1─* study_sessions
 ```
 
-**Không entity nào có `@ManyToOne` hay `@OneToMany`**, không cascade, và database không có
-ràng buộc khóa ngoại. Toàn bộ quan hệ chỉ là các cột `Long`.
+**No entity has `@ManyToOne` or `@OneToMany`**, there are no cascades, and the database has no
+foreign key constraints. Every relationship is just a `Long` column.
 
-## Hệ quả bắt buộc phải nhớ
+## Consequences you must remember
 
-### 1. Join được viết tay
+### 1. Joins are written by hand
 
-Không có lazy loading. Ví dụ `ReviewService.getTodayReviews` nạp review, gom `cardId`,
-gọi `flashcardRepository.findAllById(...)` theo lô, rồi ghép hai danh sách trong bộ nhớ.
+There is no lazy loading. For example `ReviewService.getTodayReviews` loads the reviews, collects
+the `cardId`s, calls `flashcardRepository.findAllById(...)` as a batch, then zips the two lists
+in memory.
 
-### 2. Xóa dây chuyền là thủ công — và có thứ tự
+### 2. Cascade deletion is manual — and ordered
 
-Mọi đường xóa đều **phải tự dọn `card_reviews`**.
+Every delete path **must clean up `card_reviews` itself**.
 
 ```java
-// DeckService.deleteDeck — đúng thứ tự
-List<Long> cardIds = flashcardRepository.findIdsByDeckId(deckId); // 1. lấy id trước
-cardReviewRepository.deleteByCardIdIn(cardIds);                   // 2. xóa review
-flashcardRepository.deleteByDeckId(deckId);                       // 3. xóa thẻ
-deckRepository.delete(deck);                                      // 4. xóa deck
+// DeckService.deleteDeck — the correct order
+List<Long> cardIds = flashcardRepository.findIdsByDeckId(deckId); // 1. collect the ids first
+cardReviewRepository.deleteByCardIdIn(cardIds);                   // 2. delete the reviews
+flashcardRepository.deleteByDeckId(deckId);                       // 3. delete the cards
+deckRepository.delete(deck);                                      // 4. delete the deck
 ```
 
 ```java
 // FlashcardService.deleteCard
-cardReviewRepository.deleteByCardId(cardId);  // review trước
-flashcardRepository.delete(card);             // thẻ sau
+cardReviewRepository.deleteByCardId(cardId);  // the review first
+flashcardRepository.delete(card);             // the card after
 ```
 
-Bỏ qua bước dọn review sẽ để lại **review mồ côi** — bản ghi `card_reviews` trỏ tới thẻ đã
-biến mất. Triệu chứng: `/api/reviews/today` trả về `card: null` và giao diện ôn tập lỗi.
+Skipping the review cleanup leaves **orphaned reviews** — `card_reviews` rows pointing at a card
+that is gone. The symptom: `/api/reviews/today` returns `card: null` and the review UI breaks.
 
-### 3. Ba lớp phòng thủ chống review mồ côi
+### 3. Three layers of defence against orphaned reviews
 
-Ngoài việc dọn đúng lúc xóa, hệ thống còn chặn dữ liệu mồ côi cũ ở nhiều tầng:
+Beyond cleaning up at delete time, the system also blocks pre-existing orphans at several layers:
 
-| Tầng | Cơ chế |
-|------|--------|
-| Truy vấn | `CardReviewRepository.findDueReviews` / `findDueCardIds` lọc bằng `EXISTS (… Flashcard …)` |
-| Service | `ReviewService.getTodayReviews` loại review không nạp được thẻ |
-| Định kỳ | `SchedulerService.cleanupOrphanedReviews` (cron `0 0 3 * * *`) xóa hẳn khỏi DB |
-| Frontend | `reviewSlice` lọc `card == null`; `ReviewPage` không render `ReviewCard` khi thẻ null |
+| Layer | Mechanism |
+|-------|-----------|
+| Query | `CardReviewRepository.findDueReviews` / `findDueCardIds` filter with `EXISTS (… Flashcard …)` |
+| Service | `ReviewService.getTodayReviews` drops reviews whose card did not load |
+| Scheduled | `SchedulerService.cleanupOrphanedReviews` (cron `0 0 3 * * *`) deletes them from the DB |
+| Frontend | `reviewSlice` filters `card == null`; `ReviewPage` does not render `ReviewCard` for a null card |
 
-### 4. `Deck.cardCount` phải được đồng bộ tay
+### 4. `Deck.cardCount` must be synchronized by hand
 
-Sau **mọi** thao tác thêm hoặc xóa thẻ, gọi `DeckService.updateCardCount(deckId)`.
-Hiện `FlashcardService.createCard`, `FlashcardService.deleteCard` và
-`AiGenerationService.generateFromFile` đều đã gọi.
+After **every** card insert or delete, call `DeckService.updateCardCount(deckId)`.
+Today `FlashcardService.createCard`, `FlashcardService.deleteCard` and
+`AiGenerationService.generateFromFile` all call it.
 
-## Tài liệu liên quan
+## Related documents
 
-- Ý nghĩa các cột SM-2 trong `card_reviews`: [spaced-repetition.md](spaced-repetition.md)
-- Nơi thi hành các quy tắc trên: [backend.md](backend.md)
+- What the SM-2 columns in `card_reviews` mean: [spaced-repetition.md](spaced-repetition.md)
+- Where the rules above are enforced: [backend.md](backend.md)

@@ -1,16 +1,16 @@
 # API Reference
 
-Base URL: `http://localhost:8080` (dev) — frontend luôn gọi qua tiền tố `/api`.
+Base URL: `http://localhost:8080` (dev) — the frontend always calls through the `/api` prefix.
 
-Mọi endpoint **trừ** `/api/auth/**` và `/actuator/**` đều yêu cầu header:
+Every endpoint **except** `/api/auth/**` and `/actuator/**` requires the header:
 
 ```
 Authorization: Bearer <accessToken>
 ```
 
-## Định dạng lỗi
+## Error format
 
-Mọi lỗi đều trả về cùng một cấu trúc:
+Every error returns the same structure:
 
 ```json
 {
@@ -20,12 +20,14 @@ Mọi lỗi đều trả về cùng một cấu trúc:
 }
 ```
 
-| Mã | Khi nào |
-|----|---------|
-| 400 | Lỗi nghiệp vụ (`BusinessException`) hoặc validation thất bại |
-| 401 / 403 | Thiếu token, token hỏng, token sai `type`, hoặc truy cập tài nguyên của người khác |
-| 404 | Deck hoặc thẻ không tồn tại |
-| 500 | Lỗi không lường trước |
+Error messages are returned in Vietnamese, exactly as the backend produces them.
+
+| Code | When |
+|------|------|
+| 400 | Business error (`BusinessException`) or failed validation |
+| 401 / 403 | Missing token, broken token, wrong token `type`, or accessing someone else's resource |
+| 404 | The deck or card does not exist |
+| 500 | Unexpected error |
 
 ---
 
@@ -37,9 +39,9 @@ Mọi lỗi đều trả về cùng một cấu trúc:
 { "email": "test@test.com", "password": "123456", "fullName": "Test User" }
 ```
 
-Ràng buộc: `email` đúng định dạng email, `password` 6–100 ký tự, `fullName` không rỗng.
+Constraints: `email` must be a valid email, `password` 6–100 characters, `fullName` not blank.
 
-Trả về `200` với `AuthResponse`:
+Returns `200` with an `AuthResponse`:
 
 ```json
 {
@@ -49,7 +51,7 @@ Trả về `200` với `AuthResponse`:
 }
 ```
 
-Email đã tồn tại → `400` `"Email đã tồn tại"`.
+An email that already exists → `400` `"Email đã tồn tại"`.
 
 ### `POST /api/auth/login`
 
@@ -57,8 +59,8 @@ Email đã tồn tại → `400` `"Email đã tồn tại"`.
 { "email": "test@test.com", "password": "123456" }
 ```
 
-Trả về `AuthResponse`. Sai email hoặc sai mật khẩu đều trả `400`
-`"Email hoặc mật khẩu không đúng"` (cố ý không phân biệt).
+Returns an `AuthResponse`. A wrong email and a wrong password both return `400`
+`"Email hoặc mật khẩu không đúng"` (deliberately indistinguishable).
 
 ### `POST /api/auth/refresh`
 
@@ -66,24 +68,24 @@ Trả về `AuthResponse`. Sai email hoặc sai mật khẩu đều trả `400`
 { "refreshToken": "eyJ..." }
 ```
 
-Trả về `AuthResponse` với **cả access lẫn refresh token mới**. Token không hợp lệ hoặc
-không mang `type = refresh` → `400` `"Refresh token không hợp lệ"`.
+Returns an `AuthResponse` with **both a new access and a new refresh token**. A token that is
+invalid or does not carry `type = refresh` → `400` `"Refresh token không hợp lệ"`.
 
 ---
 
 ## Decks
 
-Mọi endpoint deck đều giới hạn trong deck thuộc sở hữu của người gọi.
+Every deck endpoint is limited to decks owned by the caller.
 
-| Method | Path | Body | Trả về |
-|--------|------|------|--------|
-| `GET` | `/api/decks` | — | `DeckResponse[]`, mới nhất trước |
+| Method | Path | Body | Returns |
+|--------|------|------|---------|
+| `GET` | `/api/decks` | — | `DeckResponse[]`, newest first |
 | `GET` | `/api/decks/{id}` | — | `DeckResponse` |
 | `POST` | `/api/decks` | `DeckRequest` | `DeckResponse` |
 | `PUT` | `/api/decks/{id}` | `DeckRequest` | `DeckResponse` |
 | `DELETE` | `/api/decks/{id}` | — | `204 No Content` |
 
-`DeckRequest`: `{ "title": "bắt buộc", "description": "tùy chọn", "language": "tùy chọn" }`
+`DeckRequest`: `{ "title": "required", "description": "optional", "language": "optional" }`
 
 `DeckResponse`:
 
@@ -95,20 +97,20 @@ Mọi endpoint deck đều giới hạn trong deck thuộc sở hữu của ngư
 }
 ```
 
-`DELETE` xóa dây chuyền thủ công: review của các thẻ → các thẻ → deck.
+`DELETE` cascades manually: the cards' reviews → the cards → the deck.
 
 ---
 
 ## Flashcards
 
-| Method | Path | Body | Trả về |
-|--------|------|------|--------|
-| `GET` | `/api/decks/{deckId}/cards` | — | `FlashcardResponse[]`, cũ nhất trước |
+| Method | Path | Body | Returns |
+|--------|------|------|---------|
+| `GET` | `/api/decks/{deckId}/cards` | — | `FlashcardResponse[]`, oldest first |
 | `POST` | `/api/decks/{deckId}/cards` | `FlashcardRequest` | `FlashcardResponse` |
 | `PUT` | `/api/cards/{cardId}` | `FlashcardRequest` | `FlashcardResponse` |
 | `DELETE` | `/api/cards/{cardId}` | — | `204 No Content` |
 
-`FlashcardRequest`: `{ "front": "bắt buộc", "back": "bắt buộc", "hint": "tùy chọn" }`
+`FlashcardRequest`: `{ "front": "required", "back": "required", "hint": "optional" }`
 
 `FlashcardResponse`:
 
@@ -116,28 +118,28 @@ Mọi endpoint deck đều giới hạn trong deck thuộc sở hữu của ngư
 { "id": 7, "deckId": 1, "front": "…", "back": "…", "hint": null, "isAiGenerated": false }
 ```
 
-Thẻ mới tạo kèm luôn một `CardReview` đến hạn **hôm nay**, và `Deck.cardCount` được cập nhật.
+A newly created card comes with a `CardReview` due **today**, and `Deck.cardCount` is updated.
 
 ### `POST /api/decks/{deckId}/generate-ai`
 
 `Content-Type: multipart/form-data`
 
-| Tham số | Bắt buộc | Mô tả |
-|---------|----------|-------|
-| `file` | có | File `.pdf` hoặc `.txt`, tối đa 5MB |
-| `count` | không | Số thẻ muốn sinh, mặc định `10` |
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `file` | yes | A `.pdf` or `.txt` file, at most 5MB |
+| `count` | no | How many cards to generate, default `10` |
 
-Trả về `FlashcardResponse[]` gồm các thẻ vừa được lưu (`isAiGenerated: true`), mỗi thẻ kèm
-một `CardReview` đến hạn hôm nay.
+Returns a `FlashcardResponse[]` of the cards just saved (`isAiGenerated: true`), each with a
+`CardReview` due today.
 
-Lỗi thường gặp, tất cả đều là `400`:
+Common errors, all of them `400`:
 
 - `"Chỉ hỗ trợ file PDF và TXT"`
 - `"File trống hoặc không thể đọc nội dung"`
-- `"Không thể tạo flashcard từ AI: …"` — gọi OpenAI thất bại hoặc quá 60 giây
+- `"Không thể tạo flashcard từ AI: …"` — the OpenAI call failed or exceeded 60 seconds
 - `"AI trả về định dạng không hợp lệ"` / `"AI không sinh được flashcard nào"`
 
-Nội dung file bị cắt còn 8000 ký tự trước khi gửi cho model.
+The file content is truncated to 8000 characters before being sent to the model.
 
 ---
 
@@ -145,7 +147,8 @@ Nội dung file bị cắt còn 8000 ký tự trước khi gửi cho model.
 
 ### `GET /api/reviews/today`
 
-Trả về mọi review có `nextReviewDate <= hôm nay` của người dùng, đã ghép sẵn nội dung thẻ:
+Returns every review of the user with `nextReviewDate <= today`, with the card content already
+zipped in:
 
 ```json
 [
@@ -158,7 +161,7 @@ Trả về mọi review có `nextReviewDate <= hôm nay` của người dùng, �
 ]
 ```
 
-Review nào không nạp được thẻ tương ứng đều bị loại, nên `card` trên thực tế không bao giờ null.
+Reviews whose card could not be loaded are dropped, so in practice `card` is never null.
 
 ### `POST /api/reviews/{cardId}`
 
@@ -166,17 +169,17 @@ Review nào không nạp được thẻ tương ứng đều bị loại, nên `
 { "quality": 4 }
 ```
 
-`quality` là số nguyên **0–5** (bắt buộc, có kiểm tra `@Min`/`@Max`).
+`quality` is an integer **0–5** (required, checked with `@Min`/`@Max`).
 
 ```json
 { "nextReviewDate": "2026-08-24", "interval": 6, "isMastered": false }
 ```
 
-Thẻ không tồn tại → `404`; thẻ của người khác → `403` (không có bản ghi nào được viết).
-`isMastered` là `true` khi `repetitionCount >= 5`. Mỗi lần submit đều cập nhật
-`StudySession` của hôm nay; `quality >= 3` được tính là trả lời đúng.
+A card that does not exist → `404`; someone else's card → `403` (and nothing is written).
+`isMastered` is `true` when `repetitionCount >= 5`. Every submit also updates today's
+`StudySession`; `quality >= 3` counts as a correct answer.
 
-Công thức tính lịch: [spaced-repetition.md](spaced-repetition.md).
+The scheduling formula: [spaced-repetition.md](spaced-repetition.md).
 
 ---
 
@@ -193,13 +196,14 @@ Công thức tính lịch: [spaced-repetition.md](spaced-repetition.md).
 }
 ```
 
-- `last30Days` luôn có đúng 30 phần tử, ngày không học được lấp bằng 0.
-- `totalCardsReviewed` **chỉ tính trong 30 ngày đó**, không phải tổng toàn thời gian.
-- `masteredCards` đếm số thẻ có `repetitionCount >= 5`.
-- `currentStreak` đếm lùi từ hôm nay; nếu hôm nay chưa học thì tính từ hôm qua.
+- `last30Days` always has exactly 30 entries; days without study are filled with zeros.
+- `totalCardsReviewed` **only covers those 30 days**, not all time.
+- `masteredCards` counts the cards with `repetitionCount >= 5`.
+- `currentStreak` counts backwards from today; if today has no study yet, it starts from
+  yesterday.
 
 ---
 
 ## Actuator
 
-`/actuator/**` là public (`spring-boot-starter-actuator`), dùng cho health check.
+`/actuator/**` is public (`spring-boot-starter-actuator`), used for health checks.

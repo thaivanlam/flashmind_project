@@ -1,56 +1,57 @@
-# Bảo trì tài liệu
+# Maintaining the documentation
 
-Tài liệu trong `docs/` là một phần của mã nguồn: thay đổi code và cập nhật tài liệu đi cùng
-nhau trong một lần thay đổi, không để lại "sẽ cập nhật sau".
+The documentation in `docs/` is part of the source: a code change and its documentation update
+travel together in one change, with no "will update later" left behind.
 
-## Quy trình
+## Process
 
-**Trước khi bắt tay vào việc:** đọc [README.md](README.md) rồi mở những tài liệu liên quan
-tới vùng sắp đụng tới.
+**Before starting work:** read [README.md](README.md), then open the documents covering the area
+you are about to touch.
 
-**Sau khi thay đổi code:** tra bảng dưới đây, cập nhật mọi tài liệu bị ảnh hưởng.
+**After changing code:** look it up in the table below and update every affected document.
 
-## Ánh xạ code → tài liệu
+## Code → documentation map
 
-| Bạn sửa gì | Cập nhật tài liệu nào |
-|------------|------------------------|
-| Thêm/sửa/xóa endpoint (controller, DTO, validation) | [api-reference.md](api-reference.md), [backend.md](backend.md); nếu client cũng đổi thì [frontend.md](frontend.md) |
-| Entity, cột, ràng buộc, đường xóa dữ liệu | [data-model.md](data-model.md) |
-| `ReviewService.applySpacedRepetition`, `MASTERY_THRESHOLD` | [spaced-repetition.md](spaced-repetition.md) **và** `ReviewServiceTest` |
-| Service mới, đổi trách nhiệm service | [backend.md](backend.md) |
-| Bảo mật: JWT, filter chain, quy tắc phân quyền | [backend.md](backend.md), [architecture.md](architecture.md); ảnh hưởng cấu hình thì [configuration.md](configuration.md) |
-| Cron job, cách dùng Redis | [backend.md](backend.md), [architecture.md](architecture.md) |
-| Prompt AI, parse file, giới hạn ký tự/kích thước | [backend.md](backend.md), [api-reference.md](api-reference.md) |
-| Mã lỗi, `GlobalExceptionHandler` | [api-reference.md](api-reference.md), [backend.md](backend.md) |
-| Route, slice Redux, tầng axios, lưu token | [frontend.md](frontend.md) |
-| Interface TypeScript phản chiếu DTO | [frontend.md](frontend.md), [api-reference.md](api-reference.md) |
-| `application.properties`, biến môi trường, `.env.example` | [configuration.md](configuration.md) |
-| `docker-compose.yml`, Dockerfile, `nginx.conf` | [configuration.md](configuration.md), [development.md](development.md) |
-| Script build/test, thêm hoặc bớt test | [development.md](development.md); số lượng test còn nêu ở [backend.md](backend.md) |
-| Kiến trúc hoặc quyết định thiết kế xuyên suốt | [architecture.md](architecture.md), và cả `CLAUDE.md` ở thư mục gốc |
+| What you changed | Documents to update |
+|------------------|---------------------|
+| Adding/changing/removing an endpoint (controller, DTO, validation) | [api-reference.md](api-reference.md), [backend.md](backend.md); if the client changes too, [frontend.md](frontend.md) |
+| Entities, columns, constraints, data deletion paths | [data-model.md](data-model.md) |
+| `ReviewService.applySpacedRepetition`, `MASTERY_THRESHOLD` | [spaced-repetition.md](spaced-repetition.md) **and** `ReviewServiceTest` |
+| A new service, or a service changing responsibility | [backend.md](backend.md) |
+| Security: JWT, filter chain, authorization rules | [backend.md](backend.md), [architecture.md](architecture.md); if configuration is affected, [configuration.md](configuration.md) |
+| Cron jobs, how Redis is used | [backend.md](backend.md), [architecture.md](architecture.md) |
+| The AI prompt, file parsing, character/size limits | [backend.md](backend.md), [api-reference.md](api-reference.md) |
+| Error codes, `GlobalExceptionHandler` | [api-reference.md](api-reference.md), [backend.md](backend.md) |
+| Routes, Redux slices, the axios layer, token storage | [frontend.md](frontend.md) |
+| TypeScript interfaces mirroring DTOs | [frontend.md](frontend.md), [api-reference.md](api-reference.md) |
+| `application.properties`, environment variables, `.env.example` | [configuration.md](configuration.md) |
+| `docker-compose.yml`, the Dockerfiles, `nginx.conf` | [configuration.md](configuration.md), [development.md](development.md) |
+| Build/test scripts, adding or removing tests | [development.md](development.md); the test count also appears in [backend.md](backend.md) |
+| Architecture or a cross-cutting design decision | [architecture.md](architecture.md), and `CLAUDE.md` in the repository root as well |
 
-## Khi thêm tài liệu mới
+## When adding a new document
 
-1. Đặt file trong `docs/`, tên kebab-case, đuôi `.md`.
-2. Thêm một dòng vào bảng mục lục trong [README.md](README.md).
-3. Nếu nó mô tả một vùng code, thêm dòng tương ứng vào bảng ánh xạ ở trên.
+1. Put the file in `docs/`, kebab-case name, `.md` extension.
+2. Add a row to the index table in [README.md](README.md).
+3. If it describes an area of the code, add the matching row to the map above.
 
-## Nguyên tắc viết
+## Writing principles
 
-- **Mô tả code như nó đang là, không như nó nên là.** Phần chưa hoàn thiện (Redis chỉ ghi,
-  không có thu hồi token, không có migration) phải được ghi rõ là chưa hoàn thiện.
-- Nêu con số cụ thể: cron, timeout, ngưỡng, giới hạn — đó là thứ người đọc tìm.
-- Liên kết tới file nguồn bằng đường dẫn tương đối để người đọc nhảy thẳng vào code.
-- Đừng chép nguyên khối code dài; chỉ trích phần thể hiện quy tắc.
-- Văn xuôi tiếng Việt, định danh và hợp đồng API tiếng Anh.
+- **Describe the code as it is, not as it ought to be.** Unfinished parts (Redis write-only, no
+  token revocation, no migrations) must be stated as unfinished.
+- Give concrete numbers: crons, timeouts, thresholds, limits — that is what readers come for.
+- Link to source files with relative paths so the reader can jump straight into the code.
+- Do not paste long blocks of code; quote only the part that shows the rule.
+- Documentation prose is in English. In the code itself, comments, log messages and user-facing
+  error strings stay in Vietnamese — quote those strings verbatim when documenting them.
 
-## Quan hệ với `CLAUDE.md` và `README.md`
+## Relationship with `CLAUDE.md` and `README.md`
 
-| File | Vai trò |
-|------|---------|
-| `docs/**` | Toàn bộ tài liệu chi tiết của dự án |
-| `README.md` (gốc) | Trang giới thiệu ngắn cho GitHub, trỏ về `docs/` |
-| `CLAUDE.md` (gốc) | Hướng dẫn dành riêng cho Claude Code, tóm tắt các bẫy kiến trúc |
+| File | Role |
+|------|------|
+| `docs/**` | All the detailed documentation of the project |
+| `README.md` (root) | A short landing page for GitHub, pointing at `docs/` |
+| `CLAUDE.md` (root) | Guidance specific to Claude Code, summarizing the architectural traps |
 
-Khi một quy tắc kiến trúc thay đổi, cả `docs/` và `CLAUDE.md` đều phải phản ánh — hai file
-này không được mâu thuẫn nhau.
+When an architectural rule changes, both `docs/` and `CLAUDE.md` must reflect it — these two must
+never contradict each other.

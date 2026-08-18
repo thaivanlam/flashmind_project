@@ -1,46 +1,46 @@
 # FlashMind 🧠
 
-> AI-powered flashcard application với Spaced Repetition (SM-2 algorithm)
+> AI-powered flashcard application with spaced repetition (SM-2 algorithm)
 
-Học thông minh hơn — chỉ ôn những gì bạn sắp quên. FlashMind tự động sinh flashcard từ tài liệu
-PDF/TXT bằng AI và lên lịch ôn tập tối ưu dựa trên thuật toán SuperMemo 2.
+Study smarter — review only what you are about to forget. FlashMind generates flashcards from
+your PDF/TXT documents with AI and schedules reviews using the SuperMemo 2 algorithm.
 
-## 📚 Tài liệu
+## 📚 Documentation
 
-Toàn bộ tài liệu của dự án nằm trong **[`docs/`](docs/README.md)**.
+All project documentation lives in **[`docs/`](docs/README.md)**.
 
 | | |
 |---|---|
-| [Kiến trúc](docs/architecture.md) | Tổng thể hệ thống, luồng dữ liệu, quyết định thiết kế |
-| [Backend](docs/backend.md) | Phân tầng, service, bảo mật, scheduler, lỗi |
-| [Frontend](docs/frontend.md) | Routing, Redux, tầng API, token |
-| [API Reference](docs/api-reference.md) | Đặc tả đầy đủ mọi endpoint |
-| [Mô hình dữ liệu](docs/data-model.md) | Entity, bảng, quy tắc xóa |
-| [Thuật toán SM-2](docs/spaced-repetition.md) | Công thức và cách cài đặt |
-| [Phát triển](docs/development.md) | Chạy, build, test |
-| [Cấu hình](docs/configuration.md) | Biến môi trường, triển khai |
-| [Bảo trì tài liệu](docs/maintaining-docs.md) | Sửa code ở đâu thì cập nhật tài liệu nào |
+| [Architecture](docs/architecture.md) | System overview, request flow, cross-cutting design decisions |
+| [Backend](docs/backend.md) | Layering, services, security, scheduler, error handling |
+| [Frontend](docs/frontend.md) | Routing, Redux, API layer, token storage |
+| [API Reference](docs/api-reference.md) | Full specification of every endpoint |
+| [Data Model](docs/data-model.md) | Entities, tables, deletion rules |
+| [SM-2 Algorithm](docs/spaced-repetition.md) | The formula and how it is implemented |
+| [Development](docs/development.md) | Running, building, testing |
+| [Configuration](docs/configuration.md) | Environment variables, deployment |
+| [Maintaining Docs](docs/maintaining-docs.md) | Which docs to update for a given code change |
 
-## ✨ Tính năng chính
+## ✨ Features
 
-- 🔐 **Xác thực JWT** — access token 1 giờ + refresh token 7 ngày (stateless)
-- 📚 **Quản lý bộ thẻ** — tạo, sửa, xóa decks và flashcards
-- 🤖 **AI Generation** — upload PDF/TXT, `gpt-4o-mini` tự động sinh flashcard
-- 🧮 **SM-2 Spaced Repetition** — thuật toán SuperMemo 2 chuẩn, chấm điểm 0–5
-- 📊 **Analytics** — streak, biểu đồ 30 ngày, số thẻ đã thuộc
-- ⏰ **Scheduled Job** — dọn `card_reviews` mồ côi lúc 03:00 và ghi cache due cards lúc 00:00
+- 🔐 **JWT authentication** — 1-hour access token + 7-day refresh token (stateless)
+- 📚 **Deck management** — create, edit and delete decks and flashcards
+- 🤖 **AI generation** — upload a PDF/TXT file and let `gpt-4o-mini` write the cards
+- 🧮 **SM-2 spaced repetition** — the standard SuperMemo 2 algorithm, graded 0–5
+- 📊 **Analytics** — streak, 30-day chart, mastered card count
+- ⏰ **Scheduled jobs** — purge orphaned `card_reviews` at 03:00, cache due cards at 00:00
 
-## 🗂️ Cấu trúc repo
+## 🗂️ Repository layout
 
 ```
 backend/            Spring Boot monolith (controller → service → repository)
 frontend/           React 19 + TypeScript SPA (Vite, Redux Toolkit)
-docs/               Toàn bộ tài liệu dự án
+docs/               All project documentation
 docker-compose.yml  Frontend + backend + PostgreSQL + Redis
-.env.example        Mẫu biến môi trường cho Docker Compose
+.env.example        Environment variable template for Docker Compose
 ```
 
-## 🛠️ Tech Stack
+## 🛠️ Tech stack
 
 **Backend** — Java 25, Spring Boot 3.5.16, Spring Security + jjwt 0.12, Spring Data JPA,
 PostgreSQL 16, Spring Data Redis, Spring WebFlux (WebClient), Spring Scheduler,
@@ -51,10 +51,10 @@ Axios, Tailwind CSS 3.4, Chart.js, Lucide React, react-hot-toast.
 
 **DevOps** — Docker, Docker Compose, Nginx.
 
-## 🚀 Quick Start
+## 🚀 Quick start
 
 ```bash
-cp .env.example .env          # rồi điền OPENAI_API_KEY
+cp .env.example .env          # then fill in OPENAI_API_KEY
 docker-compose up -d
 docker-compose logs -f backend
 ```
@@ -64,47 +64,47 @@ docker-compose logs -f backend
 - 🐘 PostgreSQL: localhost:5432
 - 🔴 Redis: localhost:6379
 
-Chạy local không dùng Docker, chi tiết test và build: xem
+For running without Docker, plus build and test details, see
 [docs/development.md](docs/development.md).
 
-## 💡 Demo Flow
+## 💡 Demo flow
 
-1. Đăng ký tài khoản tại `/register`
-2. Tạo deck mới (VD: "TOEIC Vocabulary")
-3. Vào chi tiết deck → upload file PDF/TXT → AI tự động sinh flashcard
-4. Vào trang **Ôn tập** → lật thẻ → đánh giá độ nhớ (0–5)
-5. Sau vài ngày, quay lại ôn các thẻ đến hạn
-6. Xem **Thống kê** để theo dõi streak và tiến độ
+1. Register an account at `/register`
+2. Create a deck (e.g. "TOEIC Vocabulary")
+3. Open the deck → upload a PDF/TXT file → AI generates the flashcards
+4. Go to **Review** → flip a card → grade your recall (0–5)
+5. Come back after a few days to review the cards that are due
+6. Check **Analytics** to follow your streak and progress
 
-## ⚠️ Trạng thái hiện tại
+## ⚠️ Current state
 
-Những điểm dưới đây là thực tế của code, không phải kế hoạch — chi tiết ở
+The points below describe the code as it is today, not what is planned — details in
 [docs/README.md](docs/README.md):
 
-- **Redis mới chỉ được ghi, chưa được đọc** — `/api/reviews/today` luôn truy vấn PostgreSQL
-- **Không có migration** — schema do `spring.jpa.hibernate.ddl-auto=update` sinh ra
-- **Không có logout / thu hồi token** — refresh token là stateless
-- **Database không có khóa ngoại** — xóa dây chuyền được làm thủ công trong service
-- **Không có test frontend**; backend có 14 unit test Mockito ở tầng service
-- `npm run lint` **không chạy được** (repo chưa cài eslint) — dùng `npx tsc -b --noEmit`
+- **Redis is write-only so far** — `/api/reviews/today` always queries PostgreSQL
+- **No migrations** — the schema is generated by `spring.jpa.hibernate.ddl-auto=update`
+- **No logout or token revocation** — refresh tokens are stateless
+- **No foreign keys in the database** — cascade deletion is done manually in the service layer
+- **No frontend tests**; the backend has 14 Mockito unit tests at the service layer
+- `npm run lint` **does not work** (eslint is not installed) — use `npx tsc -b --noEmit`
 
-## 🔒 Security Notes
+## 🔒 Security notes
 
-- Mật khẩu băm bằng **BCrypt**
-- JWT access token hết hạn sau **1 giờ**, refresh token sau **7 ngày**
-- Refresh token là **stateless** — chưa có cơ chế logout/thu hồi
-- File upload giới hạn **5MB**; văn bản trích xuất bị cắt còn **8000 ký tự**
-- CORS mặc định chỉ cho localhost; **production bắt buộc đổi** `app.cors.allowed-origins`
-  và `JWT_SECRET`
-- `/actuator/**` đang **public** và log ở mức `DEBUG` — cần siết lại trước khi lên production
-  (xem checklist trong [docs/configuration.md](docs/configuration.md))
+- Passwords are hashed with **BCrypt**
+- JWT access tokens expire after **1 hour**, refresh tokens after **7 days**
+- Refresh tokens are **stateless** — there is no logout/revocation mechanism yet
+- Uploads are capped at **5MB**; extracted text is truncated to **8000 characters**
+- CORS defaults to localhost only; production **must** override `app.cors.allowed-origins`
+  and `JWT_SECRET`
+- `/actuator/**` is currently **public** and logging is at `DEBUG` — tighten both before
+  going to production (see the checklist in [docs/configuration.md](docs/configuration.md))
 
 ## 📝 License
 
-[GNU AGPL-3.0](LICENSE) — xem toàn văn trong file `LICENSE`.
+[GNU AGPL-3.0](LICENSE) — see the `LICENSE` file for the full text.
 
 ## 🙋 Author
 
 Built by **Lâm** as a portfolio project demonstrating full-stack architecture
-(Spring Boot + React TypeScript), spaced repetition, AI integration, và các tính năng
-production-ready (JWT auth, scheduled jobs, Docker deployment).
+(Spring Boot + React TypeScript), spaced repetition, AI integration, and production-ready
+features (JWT auth, scheduled jobs, Docker deployment).

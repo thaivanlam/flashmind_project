@@ -1,101 +1,102 @@
 # Frontend
 
-React 19 + TypeScript 5.6 + Vite 6, mã nguồn trong [frontend/src/](../frontend/src/).
-Alias `@/*` trỏ tới `src/*`, khai báo ở cả `tsconfig.json` lẫn `vite.config.ts`.
+React 19 + TypeScript 5.6 + Vite 6, source in [frontend/src/](../frontend/src/).
+The alias `@/*` points at `src/*`, declared in both `tsconfig.json` and `vite.config.ts`.
 
-## Khởi động ứng dụng
+## Application startup
 
-[main.tsx](../frontend/src/main.tsx) bọc `App` trong `Provider` (Redux store),
-`BrowserRouter` và `Toaster` (react-hot-toast, góc trên bên phải).
+[main.tsx](../frontend/src/main.tsx) wraps `App` in `Provider` (the Redux store),
+`BrowserRouter` and `Toaster` (react-hot-toast, top right corner).
 
 ## Routing
 
-Khai báo trong [App.tsx](../frontend/src/App.tsx):
+Declared in [App.tsx](../frontend/src/App.tsx):
 
-| Đường dẫn | Trang | Bảo vệ |
-|-----------|-------|--------|
-| `/` | chuyển hướng sang `/dashboard` | — |
-| `/login` | `LoginPage` | công khai |
-| `/register` | `RegisterPage` | công khai |
+| Path | Page | Protection |
+|------|------|------------|
+| `/` | redirects to `/dashboard` | — |
+| `/login` | `LoginPage` | public |
+| `/register` | `RegisterPage` | public |
 | `/dashboard` | `DashboardPage` | `ProtectedRoute` |
 | `/decks` | `DecksPage` | `ProtectedRoute` |
 | `/decks/:id` | `DeckDetailPage` | `ProtectedRoute` |
 | `/review` | `ReviewPage` | `ProtectedRoute` |
 | `/analytics` | `AnalyticsPage` | `ProtectedRoute` |
 
-[ProtectedRoute](../frontend/src/components/common/ProtectedRoute.tsx) chỉ đọc
-`state.auth.isAuthenticated` và điều hướng về `/login` nếu chưa đăng nhập.
+[ProtectedRoute](../frontend/src/components/common/ProtectedRoute.tsx) only reads
+`state.auth.isAuthenticated` and redirects to `/login` when not logged in.
 
 ## Redux Toolkit
 
-Store cấu hình ở [store/index.ts](../frontend/src/store/index.ts), mỗi domain một slice.
-Mỗi slice tự sở hữu các `createAsyncThunk` của nó và các thunk này gọi xuống client
-`*.api.ts` mỏng. **Component dispatch thunk, không gọi axios trực tiếp.**
+The store is configured in [store/index.ts](../frontend/src/store/index.ts), one slice per
+domain. Each slice owns its own `createAsyncThunk`s, and those thunks call down into a thin
+`*.api.ts` client. **Components dispatch thunks, they never call axios directly.**
 
-| Slice | State | Thunk / action |
-|-------|-------|----------------|
+| Slice | State | Thunks / actions |
+|-------|-------|------------------|
 | [authSlice](../frontend/src/store/authSlice.ts) | `user`, `isAuthenticated`, `loading`, `error` | `login`, `register`, action `logout` |
 | [deckSlice](../frontend/src/store/deckSlice.ts) | `decks`, `current`, `loading`, `error` | `fetchDecks`, `fetchDeckById`, `createDeck`, `updateDeck`, `deleteDeck`, action `clearCurrent` |
-| [reviewSlice](../frontend/src/store/reviewSlice.ts) | `todayCards`, `currentIndex`, `loading`, `submitting`, `error` | `fetchTodayReviews`, `submitCardReview`, action `nextCard`, `resetSession` |
+| [reviewSlice](../frontend/src/store/reviewSlice.ts) | `todayCards`, `currentIndex`, `loading`, `submitting`, `error` | `fetchTodayReviews`, `submitCardReview`, actions `nextCard`, `resetSession` |
 
-Chi tiết đáng lưu ý:
+Details worth knowing:
 
-- `authSlice` khởi tạo state từ `getStoredUser()`, nên phiên đăng nhập sống sót qua F5.
-  `login`/`register` dùng `rejectWithValue` để lấy `message` do backend trả về.
-- `deckSlice` cập nhật state cục bộ sau mỗi mutation thay vì fetch lại danh sách.
-- `reviewSlice` lọc bỏ review có `card == null` khi nhận dữ liệu — lớp phòng thủ cuối
-  chống review mồ côi (xem [data-model.md](data-model.md)).
+- `authSlice` initializes its state from `getStoredUser()`, so the session survives a refresh.
+  `login`/`register` use `rejectWithValue` to surface the `message` returned by the backend.
+- `deckSlice` updates local state after each mutation instead of refetching the list.
+- `reviewSlice` filters out reviews with `card == null` when data arrives — the last line of
+  defence against orphaned reviews (see [data-model.md](data-model.md)).
 
-**Ngoại lệ:** analytics không có slice; `DashboardPage` và `AnalyticsPage` gọi thẳng
-`analyticsApi.get()` rồi giữ trong `useState` cục bộ.
+**Exception:** analytics has no slice; `DashboardPage` and `AnalyticsPage` call
+`analyticsApi.get()` directly and keep the result in local `useState`.
 
-## Tầng HTTP
+## HTTP layer
 
-[axiosClient.ts](../frontend/src/api/axiosClient.ts) là **cổng HTTP duy nhất**.
+[axiosClient.ts](../frontend/src/api/axiosClient.ts) is the **only HTTP entry point**.
 
-- `baseURL = import.meta.env.VITE_API_URL || '/api'` — dev đi qua Vite proxy,
-  production đi qua nginx reverse proxy.
-- Request interceptor gắn `Authorization: Bearer <accessToken>`.
-- Response interceptor: gặp 401 thì thử refresh **đúng một lần** (cờ `_retry`, bỏ qua các
-  URL chứa `/auth/`), lưu cặp token mới rồi phát lại request gốc. Refresh thất bại thì xóa
-  token và chuyển hướng cứng về `/login`.
+- `baseURL = import.meta.env.VITE_API_URL || '/api'` — dev goes through the Vite proxy,
+  production through the nginx reverse proxy.
+- The request interceptor attaches `Authorization: Bearer <accessToken>`.
+- The response interceptor: on a 401 it tries to refresh **exactly once** (the `_retry` flag,
+  skipping URLs containing `/auth/`), stores the new token pair and replays the original
+  request. If the refresh fails it clears the tokens and hard-redirects to `/login`.
 
-Các client theo domain: [auth.api.ts](../frontend/src/api/auth.api.ts),
-[deck.api.ts](../frontend/src/api/deck.api.ts) (bao gồm cả flashcard và `generateAi`),
+The per-domain clients: [auth.api.ts](../frontend/src/api/auth.api.ts),
+[deck.api.ts](../frontend/src/api/deck.api.ts) (which also covers flashcards and `generateAi`),
 [review.api.ts](../frontend/src/api/review.api.ts),
 [analytics.api.ts](../frontend/src/api/analytics.api.ts).
 
-## Lưu trữ token
+## Token storage
 
-[tokenStorage.ts](../frontend/src/utils/tokenStorage.ts) bọc `localStorage` với ba khóa:
+[tokenStorage.ts](../frontend/src/utils/tokenStorage.ts) wraps `localStorage` behind three keys:
 `flashmind_access_token`, `flashmind_refresh_token`, `flashmind_user`.
-**Không bao giờ chạm trực tiếp vào các khóa này ở nơi khác** — dùng
+**Never touch these keys directly anywhere else** — use
 `getAccessToken`/`getRefreshToken`/`setTokens`/`clearTokens`/`setStoredUser`/`getStoredUser`.
 
-## Component
+## Components
 
-| Thư mục | Component |
-|---------|-----------|
+| Folder | Components |
+|--------|------------|
 | `components/common/` | `Button`, `Modal`, `ProtectedRoute` |
 | `components/layout/` | `Layout`, `Navbar` |
 | `components/deck/` | `DeckCard`, `DeckForm`, `AiGenerateForm` |
 | `components/flashcard/` | `FlashcardForm`, `FlashcardItem`, `ReviewCard` |
 
-`ReviewPage` chạy phiên ôn tập: nạp thẻ đến hạn, lật thẻ, gửi điểm 0–5, hiện lịch ôn kế tiếp
-trong 1,2 giây rồi tự chuyển sang thẻ sau. Nó không render `ReviewCard` khi thẻ là `null`.
+`ReviewPage` drives a review session: load the due cards, flip a card, submit a 0–5 grade, show
+the next review date for 1.2 seconds, then move on to the next card. It does not render
+`ReviewCard` when the card is `null`.
 
-## Kiểu dữ liệu
+## Types
 
-`types/auth.types.ts`, `types/deck.types.ts`, `types/review.types.ts` phản ánh trực tiếp
-DTO của backend. Khi sửa DTO ở backend phải sửa các interface này và cập nhật
+`types/auth.types.ts`, `types/deck.types.ts` and `types/review.types.ts` mirror the backend DTOs
+directly. Changing a DTO on the backend means changing these interfaces and updating
 [api-reference.md](api-reference.md).
 
-`CardReview.card` được khai báo là `Flashcard | null` một cách có chủ đích: backend đã lọc
-các bản ghi mồ côi, nhưng kiểu dữ liệu vẫn phản ánh đúng hợp đồng API.
+`CardReview.card` is deliberately declared as `Flashcard | null`: the backend already filters
+orphaned records, but the type still reflects the API contract accurately.
 
-## Ràng buộc TypeScript
+## TypeScript constraints
 
-`strict` bật cùng `noUnusedLocals` và `noUnusedParameters`, và `npm run build` chạy `tsc -b`
-trước `vite build` — **import thừa sẽ làm hỏng build**. Kiểm tra kiểu riêng lẻ bằng
-`npx tsc -b --noEmit`. Script `npm run lint` được khai báo nhưng không chạy được:
-repo không có eslint lẫn file cấu hình eslint.
+`strict` is on together with `noUnusedLocals` and `noUnusedParameters`, and `npm run build` runs
+`tsc -b` before `vite build` — **an unused import will break the build**. To type-check on its
+own, run `npx tsc -b --noEmit`. The `npm run lint` script is declared but does not work: the
+repo has neither eslint nor an eslint config file.
