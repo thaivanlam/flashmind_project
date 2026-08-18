@@ -56,7 +56,7 @@ Only test coverage in the repo is [ReviewServiceTest.java](backend/src/test/java
 
 **AI generation** (`AiGenerationService`): `FileParsingService` extracts text (PDFBox for PDF, UTF-8 for TXT; **truncated to 8000 chars** to cap token spend), then a WebFlux `WebClient` call with `response_format: json_object`, `temperature 0.3`, 60s timeout, `.block()`ed. The response parser is deliberately tolerant — it accepts a bare array, `flashcards`, `cards`, or the first array-valued field. All failures surface as `BusinessException`. Each generated card also gets a `CardReview` row with `nextReviewDate = today`.
 
-**Errors:** `GlobalExceptionHandler` maps `BusinessException` → 400, `ResourceNotFoundException` → 404, validation → 400, anything else → 500, all as `{timestamp, status, message}`. Note that authorization failures come back as **400, not 403**, since they throw `BusinessException`.
+**Errors:** `GlobalExceptionHandler` maps `BusinessException` → 400, `ForbiddenException` → 403, `ResourceNotFoundException` → 404, validation → 400, anything else → 500, all as `{timestamp, status, message}`. Ownership failures throw `ForbiddenException` and so surface as **403**; use it (not `BusinessException`) for any new authorization check.
 
 **Schema** is managed by `spring.jpa.hibernate.ddl-auto=update`. There are no migrations (no Flyway/Liquibase) — entity edits are the schema change, and destructive changes won't be applied by Hibernate.
 

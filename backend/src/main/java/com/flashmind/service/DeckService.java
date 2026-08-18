@@ -3,7 +3,7 @@ package com.flashmind.service;
 import com.flashmind.dto.request.DeckRequest;
 import com.flashmind.dto.response.DeckResponse;
 import com.flashmind.entity.Deck;
-import com.flashmind.exception.BusinessException;
+import com.flashmind.exception.ForbiddenException;
 import com.flashmind.exception.ResourceNotFoundException;
 import com.flashmind.repository.DeckRepository;
 import com.flashmind.repository.FlashcardRepository;
@@ -63,7 +63,7 @@ public class DeckService {
         Deck deck = deckRepository.findById(deckId)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy deck"));
         if (!deck.getUserId().equals(userId)) {
-            throw new BusinessException("Không có quyền truy cập deck này");
+            throw new ForbiddenException("Không có quyền truy cập deck này");
         }
         return deck;
     }
