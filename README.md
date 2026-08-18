@@ -39,7 +39,7 @@ Học thông minh hơn — chỉ ôn những gì bạn sắp quên. FlashMind t�
 ## 🛠️ Tech Stack
 
 ### Backend
-- **Java 17** + **Spring Boot 3.3.5**
+- **Java 25** + **Spring Boot 3.5.16**
 - **Spring Security** + **JWT** (jjwt 0.12)
 - **Spring Data JPA** + **PostgreSQL 16**
 - **Spring Data Redis** (cache due cards)

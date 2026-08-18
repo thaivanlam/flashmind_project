@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-FlashMind — AI flashcard app with SM-2 spaced repetition. Spring Boot 3.3.5 monolith (Java 17) + React 19/TypeScript/Vite SPA, backed by PostgreSQL 16 and Redis 7. OpenAI (`gpt-4o-mini`) generates flashcards from uploaded PDF/TXT.
+FlashMind — AI flashcard app with SM-2 spaced repetition. Spring Boot 3.5.16 monolith (Java 25) + React 19/TypeScript/Vite SPA, backed by PostgreSQL 16 and Redis 7. OpenAI (`gpt-4o-mini`) generates flashcards from uploaded PDF/TXT.
 
 Code comments, log messages, and user-facing error strings are written in **Vietnamese**; identifiers and API contracts in English. Match this when adding code.
 
