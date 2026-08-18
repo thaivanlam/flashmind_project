@@ -58,8 +58,8 @@ public class DeckService {
     public void deleteDeck(Long deckId, Long userId) {
         Deck deck = findDeckOwnedBy(deckId, userId);
 
-        // DB không có FK/cascade nên phải tự dọn review trước, nếu không
-        // card_reviews sẽ còn lại bản ghi mồ côi trỏ tới thẻ đã bị xóa.
+        // The DB has no FK/cascade, so reviews must be purged manually first; otherwise
+        // card_reviews keeps orphaned rows pointing at deleted cards.
         List<Long> cardIds = flashcardRepository.findIdsByDeckId(deck.getId());
         if (!cardIds.isEmpty()) {
             cardReviewRepository.deleteByCardIdIn(cardIds);
@@ -71,9 +71,9 @@ public class DeckService {
 
     public Deck findDeckOwnedBy(Long deckId, Long userId) {
         Deck deck = deckRepository.findById(deckId)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy deck"));
+            .orElseThrow(() -> new ResourceNotFoundException("Deck not found"));
         if (!deck.getUserId().equals(userId)) {
-            throw new ForbiddenException("Không có quyền truy cập deck này");
+            throw new ForbiddenException("You do not have access to this deck");
         }
         return deck;
     }
@@ -81,7 +81,7 @@ public class DeckService {
     @Transactional
     public void updateCardCount(Long deckId) {
         Deck deck = deckRepository.findById(deckId)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy deck"));
+            .orElseThrow(() -> new ResourceNotFoundException("Deck not found"));
         deck.setCardCount((int) flashcardRepository.countByDeckId(deckId));
         deckRepository.save(deck);
     }

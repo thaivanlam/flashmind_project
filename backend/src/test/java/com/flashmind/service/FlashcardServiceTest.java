@@ -40,7 +40,7 @@ class FlashcardServiceTest {
     private static final Long USER_ID = 100L;
 
     @Test
-    @DisplayName("Xóa thẻ cũng xóa review của thẻ đó")
+    @DisplayName("Deleting a card also deletes that card's review")
     void deleteCardAlsoDeletesItsReview() {
         Flashcard card = Flashcard.builder()
                 .id(CARD_ID).deckId(DECK_ID).front("F").back("B").build();
@@ -55,12 +55,12 @@ class FlashcardServiceTest {
     }
 
     @Test
-    @DisplayName("Xóa thẻ của user khác: ném ForbiddenException, không xóa review")
+    @DisplayName("Deleting another user's card: throws ForbiddenException and deletes no review")
     void cannotDeleteCardOwnedByAnotherUser() {
         Flashcard card = Flashcard.builder()
                 .id(CARD_ID).deckId(DECK_ID).front("F").back("B").build();
         when(flashcardRepository.findById(CARD_ID)).thenReturn(Optional.of(card));
-        doThrow(new ForbiddenException("Không có quyền truy cập deck này"))
+        doThrow(new ForbiddenException("You do not have access to this deck"))
                 .when(deckService).findDeckOwnedBy(DECK_ID, USER_ID);
 
         assertThatThrownBy(() -> flashcardService.deleteCard(CARD_ID, USER_ID))

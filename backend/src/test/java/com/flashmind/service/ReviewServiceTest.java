@@ -54,7 +54,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Lần ôn đầu tiên với quality=4: interval=1, EF không đổi")
+    @DisplayName("First review with quality=4: interval=1, EF unchanged")
     void firstReviewWithGoodQuality() {
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
                 .thenReturn(Optional.empty());
@@ -69,7 +69,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Lần ôn thứ 2 với quality=4: interval=6")
+    @DisplayName("Second review with quality=4: interval=6")
     void secondReviewSetsIntervalToSix() {
         CardReview existing = CardReview.builder()
                 .cardId(CARD_ID)
@@ -92,7 +92,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Trả lời sai (quality<3): reset interval về 1")
+    @DisplayName("Wrong answer (quality<3): interval resets to 1")
     void incorrectAnswerResetsInterval() {
         CardReview existing = CardReview.builder()
                 .cardId(CARD_ID)
@@ -115,7 +115,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("EF không bao giờ xuống dưới 1.3 (kể cả khi quality=0)")
+    @DisplayName("EF never drops below 1.3 (even at quality=0)")
     void easinessFactorNeverDropsBelowMin() {
         CardReview existing = CardReview.builder()
                 .cardId(CARD_ID)
@@ -141,7 +141,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Lần ôn thứ 3+: interval = prevInterval * EF")
+    @DisplayName("Third and later reviews: interval = prevInterval * EF")
     void thirdReviewMultipliesByEf() {
         CardReview existing = CardReview.builder()
                 .cardId(CARD_ID)
@@ -164,7 +164,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Card được đánh dấu mastered sau 5+ lần đúng liên tiếp")
+    @DisplayName("Card is marked mastered after 5+ consecutive correct answers")
     void cardMarkedMasteredAfterFiveCorrect() {
         CardReview existing = CardReview.builder()
                 .cardId(CARD_ID)
@@ -186,7 +186,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Submit review cũng update study session counter")
+    @DisplayName("Submitting a review also updates the study session counter")
     void submitReviewUpdatesStudySession() {
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
                 .thenReturn(Optional.empty());
@@ -199,10 +199,10 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Không thể review thẻ của user khác: ném ForbiddenException, không ghi dữ liệu")
+    @DisplayName("Cannot review another user's card: throws ForbiddenException and writes nothing")
     void cannotReviewCardOwnedByAnotherUser() {
         when(flashcardService.findCardOwnedBy(CARD_ID, USER_ID))
-                .thenThrow(new ForbiddenException("Không có quyền truy cập deck này"));
+                .thenThrow(new ForbiddenException("You do not have access to this deck"));
 
         assertThatThrownBy(() -> reviewService.submitReview(CARD_ID, USER_ID, 5))
                 .isInstanceOf(ForbiddenException.class);
@@ -212,10 +212,10 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("Review thẻ không tồn tại: ném ResourceNotFoundException")
+    @DisplayName("Reviewing a nonexistent card: throws ResourceNotFoundException")
     void cannotReviewMissingCard() {
         when(flashcardService.findCardOwnedBy(CARD_ID, USER_ID))
-                .thenThrow(new ResourceNotFoundException("Không tìm thấy thẻ"));
+                .thenThrow(new ResourceNotFoundException("Card not found"));
 
         assertThatThrownBy(() -> reviewService.submitReview(CARD_ID, USER_ID, 5))
                 .isInstanceOf(ResourceNotFoundException.class);

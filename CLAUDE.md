@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-FlashMind — AI flashcard app with SM-2 spaced repetition. Spring Boot 3.5.16 monolith (Java 25) + React 19/TypeScript/Vite SPA, backed by PostgreSQL 16 and Redis 7. OpenAI (`gpt-4o-mini`) generates flashcards from uploaded PDF/TXT.
+FlashMind — AI flashcard app with SM-2 spaced repetition. Spring Boot 3.5.16 monolith (Java 25) + React 19/TypeScript/Vite SPA, backed by PostgreSQL 16 and Redis 7. Claude (`claude-opus-5`) generates flashcards from uploaded PDF/TXT.
 
-Code comments, log messages, and user-facing error strings are written in **Vietnamese**; identifiers and API contracts in English. Match this when adding code.
+**Write everything in English** — code comments, log messages, user-facing error strings, documentation, and commit messages, as well as identifiers and API contracts. Anything you add or edit must be English, including when you are modifying a file whose existing content is not.
+
+The backend has been converted; the React frontend still contains Vietnamese UI text and is being migrated to English incrementally, so translate any frontend strings you touch rather than matching the surrounding language.
 
 ## Documentation
 
@@ -30,7 +32,7 @@ This file (`CLAUDE.md`) and `docs/` must not contradict each other.
 
 ### Full stack (Docker)
 ```bash
-cp .env.example .env          # then set OPENAI_API_KEY
+cp .env.example .env          # then set ANTHROPIC_API_KEY
 docker-compose up -d          # frontend :5173, backend :8080, pg :5432, redis :6379
 docker-compose logs -f backend
 docker-compose up postgres redis -d   # infra only, for local dev
@@ -38,7 +40,7 @@ docker-compose up postgres redis -d   # infra only, for local dev
 
 ### Backend (`backend/`, no Maven wrapper — uses system `mvn`)
 ```bash
-mvn spring-boot:run                                   # needs OPENAI_API_KEY exported
+mvn spring-boot:run                                   # needs ANTHROPIC_API_KEY exported
 mvn test                                              # all tests
 mvn test -Dtest=ReviewServiceTest                     # one class
 mvn test -Dtest=ReviewServiceTest#firstReviewWithGoodQuality   # one method
@@ -73,7 +75,7 @@ Test coverage is 14 Mockito unit tests in `backend/src/test/java/com/flashmind/s
 
 **SM-2** lives in `ReviewService.applySpacedRepetition` — the single source of truth for scheduling. `quality < 3` resets `repetitionCount` and `interval` to 1; EF is clamped at 1.3; `MASTERY_THRESHOLD = 5` repetitions marks a card mastered (duplicated as a constant in `AnalyticsService`). Changing the algorithm means updating `ReviewServiceTest` alongside it.
 
-**AI generation** (`AiGenerationService`): `FileParsingService` extracts text (PDFBox for PDF, UTF-8 for TXT; **truncated to 8000 chars** to cap token spend), then a WebFlux `WebClient` call with `response_format: json_object`, `temperature 0.3`, 60s timeout, `.block()`ed. The response parser is deliberately tolerant — it accepts a bare array, `flashcards`, `cards`, or the first array-valued field. All failures surface as `BusinessException`. Each generated card also gets a `CardReview` row with `nextReviewDate = today`.
+**AI generation** (`AiGenerationService`): `FileParsingService` extracts text (PDFBox for PDF, UTF-8 for TXT; **truncated to 8000 chars** to cap token spend), then a blocking call to Claude through the official **Anthropic Java SDK** (`com.anthropic:anthropic-java`, version pinned by the `anthropic.version` property). The `AnthropicClient` is a singleton bean from `AnthropicClientConfig`; model `claude-opus-5`, `max_tokens` 16000, 120s timeout, all set via `anthropic.*` properties. **Never send `temperature` or any sampling parameter** — they were removed on this model and return a 400; likewise do not disable adaptive thinking. The response shape comes from **structured outputs** (schema derived from the `GeneratedCards`/`GeneratedCard` records and enforced server-side), so there is no tolerant parser and no `ObjectMapper`. `stopReason` must be checked before reading content — a refusal is HTTP 200 with empty content. All failures surface as `BusinessException`. Each generated card also gets a `CardReview` row with `nextReviewDate = today`.
 
 **Errors:** `GlobalExceptionHandler` maps `BusinessException` → 400, `ForbiddenException` → 403, `ResourceNotFoundException` → 404, validation → 400, anything else → 500, all as `{timestamp, status, message}`. Ownership failures throw `ForbiddenException` and so surface as **403**; use it (not `BusinessException`) for any new authorization check.
 
@@ -91,7 +93,7 @@ TypeScript is strict with `noUnusedLocals` and `noUnusedParameters` on, and `tsc
 
 ## Configuration
 
-All backend settings are env-overridable in [application.properties](backend/src/main/resources/application.properties): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `JWT_SECRET` (Base64), `OPENAI_API_KEY` (required for AI generation). Defaults commit a dev JWT secret and assume localhost infra. Uploads cap at 5MB. `app.cors.allowed-origins` defaults to `http://localhost:5173,http://localhost:3000` — production deploys must override it.
+All backend settings are env-overridable in [application.properties](backend/src/main/resources/application.properties): `DB_URL`, `DB_USER`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `JWT_SECRET` (Base64), `ANTHROPIC_API_KEY` (required for AI generation). Defaults commit a dev JWT secret and assume localhost infra. Uploads cap at 5MB. `app.cors.allowed-origins` defaults to `http://localhost:5173,http://localhost:3000` — production deploys must override it.
 
 ## Edit protocol
 

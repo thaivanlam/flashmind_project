@@ -43,7 +43,7 @@ public class FlashcardService {
             .build();
         card = flashcardRepository.save(card);
 
-        // Tạo review record với nextReviewDate = hôm nay
+        // Create the review record with nextReviewDate = today
         cardReviewRepository.save(
             CardReview.builder()
                 .cardId(card.getId())
@@ -68,21 +68,21 @@ public class FlashcardService {
     @Transactional
     public void deleteCard(Long cardId, Long userId) {
         Flashcard card = findCardOwnedBy(cardId, userId);
-        // Dọn review trước khi xóa thẻ — DB không có FK cascade nên nếu bỏ qua
-        // bước này card_reviews sẽ giữ lại bản ghi trỏ tới thẻ không còn tồn tại.
+        // Purge the review before deleting the card — the DB has no FK cascade, so skipping
+        // this step leaves card_reviews rows pointing at a card that no longer exists.
         cardReviewRepository.deleteByCardId(cardId);
         flashcardRepository.delete(card);
         deckService.updateCardCount(card.getDeckId());
     }
 
     /**
-     * Trả về thẻ nếu user sở hữu deck chứa thẻ đó.
-     * @throws com.flashmind.exception.ResourceNotFoundException thẻ không tồn tại
-     * @throws com.flashmind.exception.ForbiddenException thẻ thuộc user khác
+     * Returns the card if the user owns the deck containing it.
+     * @throws com.flashmind.exception.ResourceNotFoundException the card does not exist
+     * @throws com.flashmind.exception.ForbiddenException the card belongs to another user
      */
     public Flashcard findCardOwnedBy(Long cardId, Long userId) {
         Flashcard card = flashcardRepository.findById(cardId)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thẻ"));
+            .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
         // Verify ownership through deck
         deckService.findDeckOwnedBy(card.getDeckId(), userId);
         return card;

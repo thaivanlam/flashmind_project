@@ -18,8 +18,8 @@ public interface CardReviewRepository extends JpaRepository<CardReview, Long> {
     Optional<CardReview> findByCardIdAndUserId(Long cardId, Long userId);
 
     /**
-     * Chỉ trả về review có thẻ tương ứng còn tồn tại — bỏ qua review mồ côi
-     * còn sót lại trong DB từ dữ liệu cũ (trước khi cascade delete được sửa).
+     * Returns only reviews whose card still exists — skips orphaned reviews left in
+     * the DB by older data (from before the cascade delete was fixed).
      */
     @Query("SELECT cr FROM CardReview cr WHERE cr.userId = :userId " +
            "AND cr.nextReviewDate <= :date " +
@@ -38,17 +38,17 @@ public interface CardReviewRepository extends JpaRepository<CardReview, Long> {
 
     long countByUserIdAndRepetitionCountGreaterThanEqual(Long userId, Integer count);
 
-    /** Xóa review của một thẻ — gọi khi xóa thẻ để không để lại bản ghi mồ côi. */
+    /** Deletes a single card's review — called when deleting a card so no orphan is left behind. */
     @Modifying
     @Query("DELETE FROM CardReview cr WHERE cr.cardId = :cardId")
     int deleteByCardId(@Param("cardId") Long cardId);
 
-    /** Xóa review của nhiều thẻ trong một câu lệnh — gọi khi xóa cả deck. */
+    /** Deletes the reviews of many cards in one statement — called when deleting a whole deck. */
     @Modifying
     @Query("DELETE FROM CardReview cr WHERE cr.cardId IN :cardIds")
     int deleteByCardIdIn(@Param("cardIds") Collection<Long> cardIds);
 
-    /** Dọn các review mồ côi (thẻ đã bị xóa) còn sót lại trong DB. */
+    /** Purges orphaned reviews (whose card was deleted) still left in the DB. */
     @Modifying
     @Query("DELETE FROM CardReview cr " +
            "WHERE NOT EXISTS (SELECT 1 FROM Flashcard f WHERE f.id = cr.cardId)")

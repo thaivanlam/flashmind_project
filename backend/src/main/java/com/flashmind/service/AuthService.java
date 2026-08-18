@@ -25,7 +25,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
-            throw new BusinessException("Email đã tồn tại");
+            throw new BusinessException("Email already exists");
         }
 
         User user = User.builder()
@@ -40,10 +40,10 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
-            .orElseThrow(() -> new BusinessException("Email hoặc mật khẩu không đúng"));
+            .orElseThrow(() -> new BusinessException("Incorrect email or password"));
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            throw new BusinessException("Email hoặc mật khẩu không đúng");
+            throw new BusinessException("Incorrect email or password");
         }
 
         return buildAuthResponse(user);
@@ -52,12 +52,12 @@ public class AuthService {
     public AuthResponse refresh(RefreshTokenRequest req) {
         String token = req.getRefreshToken();
         if (!jwtUtil.validateToken(token) || !"refresh".equals(jwtUtil.extractType(token))) {
-            throw new BusinessException("Refresh token không hợp lệ");
+            throw new BusinessException("Invalid refresh token");
         }
 
         Long userId = jwtUtil.extractUserId(token);
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new BusinessException("Người dùng không tồn tại"));
+            .orElseThrow(() -> new BusinessException("User does not exist"));
 
         return buildAuthResponse(user);
     }

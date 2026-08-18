@@ -4,7 +4,7 @@ All project documentation lives in the `docs/` folder. This file is the index â€
 
 FlashMind is a flashcard app that generates cards with AI and schedules reviews with the SM-2
 algorithm. Spring Boot 3.5.16 backend (Java 25) + React 19/TypeScript/Vite frontend, data in
-PostgreSQL 16 and Redis 7, card generation via OpenAI `gpt-4o-mini`.
+PostgreSQL 16 and Redis 7, card generation via Claude `claude-opus-5`.
 
 ## Index
 

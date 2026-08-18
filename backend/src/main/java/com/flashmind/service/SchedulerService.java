@@ -21,12 +21,12 @@ public class SchedulerService {
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
-     * Mỗi ngày lúc 00:00, cache danh sách due cards của tất cả user vào Redis
-     * giúp endpoint /reviews/today trả về nhanh hơn.
+     * Every day at 00:00, caches every user's due-card list into Redis so the
+     * /reviews/today endpoint can respond faster.
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void cacheDailyDueCards() {
-        log.info("Bắt đầu cache due cards cho ngày {}", LocalDate.now());
+        log.info("Starting due-card caching for {}", LocalDate.now());
         List<Long> userIds = cardReviewRepository.findAllDistinctUserIds();
         int total = 0;
         for (Long userId : userIds) {
@@ -44,16 +44,16 @@ public class SchedulerService {
     }
 
     /**
-     * Mỗi ngày lúc 03:00, dọn các review mồ côi — bản ghi card_reviews trỏ tới
-     * thẻ đã bị xóa. Các đường xóa hiện tại đã tự dọn, job này chỉ để làm sạch
-     * dữ liệu cũ còn sót lại từ trước khi bug được sửa.
+     * Every day at 03:00, purges orphaned reviews — card_reviews rows pointing at
+     * deleted cards. The current delete paths clean up after themselves; this job only
+     * clears older data left over from before that bug was fixed.
      */
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void cleanupOrphanedReviews() {
         int deleted = cardReviewRepository.deleteOrphanedReviews();
         if (deleted > 0) {
-            log.info("Đã dọn {} review mồ côi", deleted);
+            log.info("Purged {} orphaned reviews", deleted);
         }
     }
 }

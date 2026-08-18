@@ -14,7 +14,7 @@ every value can be overridden with an environment variable.
 | `REDIS_HOST` | `localhost` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
 | `JWT_SECRET` | an embedded dev secret | JWT signing key, **Base64-encoded** |
-| `OPENAI_API_KEY` | `your-api-key-here` | **Required** for AI card generation |
+| `ANTHROPIC_API_KEY` | `your-api-key-here` | **Required** for AI card generation |
 
 ## Fixed properties
 
@@ -24,8 +24,9 @@ every value can be overridden with an environment variable.
 | `spring.jpa.hibernate.ddl-auto` | `update` | Schema generated from the entities, no migrations |
 | `app.jwt.access-expiration` | `3600000` | Access token lives 1 hour |
 | `app.jwt.refresh-expiration` | `604800000` | Refresh token lives 7 days |
-| `openai.api-url` | `https://api.openai.com/v1/chat/completions` | |
-| `openai.model` | `gpt-4o-mini` | |
+| `anthropic.model` | `claude-opus-5` | Model used for card generation |
+| `anthropic.max-tokens` | `16000` | Response cap, required by the Claude API |
+| `anthropic.timeout-seconds` | `120` | Overrides the SDK's 10-minute default |
 | `spring.servlet.multipart.max-file-size` | `5MB` | Upload size limit |
 | `spring.servlet.multipart.max-request-size` | `5MB` | |
 | `app.cors.allowed-origins` | `http://localhost:5173,http://localhost:3000` | Comma-separated list of origins |
@@ -46,7 +47,7 @@ cp .env.example .env
 ```
 
 ```
-OPENAI_API_KEY=sk-your-openai-api-key-here
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
 JWT_SECRET=<a Base64 string>
 ```
 
