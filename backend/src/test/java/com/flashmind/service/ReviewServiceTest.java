@@ -1,8 +1,9 @@
 package com.flashmind.service;
 
 import com.flashmind.entity.CardReview;
-import com.flashmind.entity.Flashcard;
 import com.flashmind.entity.StudySession;
+import com.flashmind.exception.ForbiddenException;
+import com.flashmind.exception.ResourceNotFoundException;
 import com.flashmind.repository.CardReviewRepository;
 import com.flashmind.repository.FlashcardRepository;
 import com.flashmind.repository.StudySessionRepository;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -34,6 +36,9 @@ class ReviewServiceTest {
     @Mock
     private StudySessionRepository sessionRepository;
 
+    @Mock
+    private FlashcardService flashcardService;
+
     @InjectMocks
     private ReviewService reviewService;
 
@@ -42,20 +47,19 @@ class ReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(flashcardRepository.existsById(CARD_ID)).thenReturn(true);
-        when(sessionRepository.findByUserIdAndSessionDate(any(), any()))
-            .thenReturn(Optional.empty());
-        when(sessionRepository.save(any(StudySession.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(sessionRepository.findByUserIdAndSessionDate(any(), any()))
+                .thenReturn(Optional.empty());
+        lenient().when(sessionRepository.save(any(StudySession.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test
     @DisplayName("Lần ôn đầu tiên với quality=4: interval=1, EF không đổi")
     void firstReviewWithGoodQuality() {
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.empty());
+                .thenReturn(Optional.empty());
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> inv.getArgument(0));
 
         var result = reviewService.submitReview(CARD_ID, USER_ID, 4);
 
@@ -68,18 +72,18 @@ class ReviewServiceTest {
     @DisplayName("Lần ôn thứ 2 với quality=4: interval=6")
     void secondReviewSetsIntervalToSix() {
         CardReview existing = CardReview.builder()
-            .cardId(CARD_ID)
-            .userId(USER_ID)
-            .interval(1)
-            .easinessFactor(2.5)
-            .repetitionCount(1)
-            .nextReviewDate(LocalDate.now())
-            .build();
+                .cardId(CARD_ID)
+                .userId(USER_ID)
+                .interval(1)
+                .easinessFactor(2.5)
+                .repetitionCount(1)
+                .nextReviewDate(LocalDate.now())
+                .build();
 
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.of(existing));
+                .thenReturn(Optional.of(existing));
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> inv.getArgument(0));
 
         var result = reviewService.submitReview(CARD_ID, USER_ID, 4);
 
@@ -91,18 +95,18 @@ class ReviewServiceTest {
     @DisplayName("Trả lời sai (quality<3): reset interval về 1")
     void incorrectAnswerResetsInterval() {
         CardReview existing = CardReview.builder()
-            .cardId(CARD_ID)
-            .userId(USER_ID)
-            .interval(15)
-            .easinessFactor(2.5)
-            .repetitionCount(3)
-            .nextReviewDate(LocalDate.now())
-            .build();
+                .cardId(CARD_ID)
+                .userId(USER_ID)
+                .interval(15)
+                .easinessFactor(2.5)
+                .repetitionCount(3)
+                .nextReviewDate(LocalDate.now())
+                .build();
 
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.of(existing));
+                .thenReturn(Optional.of(existing));
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> inv.getArgument(0));
 
         var result = reviewService.submitReview(CARD_ID, USER_ID, 1);
 
@@ -114,22 +118,22 @@ class ReviewServiceTest {
     @DisplayName("EF không bao giờ xuống dưới 1.3 (kể cả khi quality=0)")
     void easinessFactorNeverDropsBelowMin() {
         CardReview existing = CardReview.builder()
-            .cardId(CARD_ID)
-            .userId(USER_ID)
-            .interval(1)
-            .easinessFactor(1.3)
-            .repetitionCount(0)
-            .nextReviewDate(LocalDate.now())
-            .build();
+                .cardId(CARD_ID)
+                .userId(USER_ID)
+                .interval(1)
+                .easinessFactor(1.3)
+                .repetitionCount(0)
+                .nextReviewDate(LocalDate.now())
+                .build();
 
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.of(existing));
+                .thenReturn(Optional.of(existing));
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> {
-                CardReview saved = inv.getArgument(0);
-                assertThat(saved.getEasinessFactor()).isGreaterThanOrEqualTo(1.3);
-                return saved;
-            });
+                .thenAnswer(inv -> {
+                    CardReview saved = inv.getArgument(0);
+                    assertThat(saved.getEasinessFactor()).isGreaterThanOrEqualTo(1.3);
+                    return saved;
+                });
 
         reviewService.submitReview(CARD_ID, USER_ID, 0);
 
@@ -140,18 +144,18 @@ class ReviewServiceTest {
     @DisplayName("Lần ôn thứ 3+: interval = prevInterval * EF")
     void thirdReviewMultipliesByEf() {
         CardReview existing = CardReview.builder()
-            .cardId(CARD_ID)
-            .userId(USER_ID)
-            .interval(6)
-            .easinessFactor(2.5)
-            .repetitionCount(2)
-            .nextReviewDate(LocalDate.now())
-            .build();
+                .cardId(CARD_ID)
+                .userId(USER_ID)
+                .interval(6)
+                .easinessFactor(2.5)
+                .repetitionCount(2)
+                .nextReviewDate(LocalDate.now())
+                .build();
 
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.of(existing));
+                .thenReturn(Optional.of(existing));
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> inv.getArgument(0));
 
         var result = reviewService.submitReview(CARD_ID, USER_ID, 4);
 
@@ -163,18 +167,18 @@ class ReviewServiceTest {
     @DisplayName("Card được đánh dấu mastered sau 5+ lần đúng liên tiếp")
     void cardMarkedMasteredAfterFiveCorrect() {
         CardReview existing = CardReview.builder()
-            .cardId(CARD_ID)
-            .userId(USER_ID)
-            .interval(38)
-            .easinessFactor(2.5)
-            .repetitionCount(4)
-            .nextReviewDate(LocalDate.now())
-            .build();
+                .cardId(CARD_ID)
+                .userId(USER_ID)
+                .interval(38)
+                .easinessFactor(2.5)
+                .repetitionCount(4)
+                .nextReviewDate(LocalDate.now())
+                .build();
 
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.of(existing));
+                .thenReturn(Optional.of(existing));
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> inv.getArgument(0));
 
         var result = reviewService.submitReview(CARD_ID, USER_ID, 5);
 
@@ -185,12 +189,37 @@ class ReviewServiceTest {
     @DisplayName("Submit review cũng update study session counter")
     void submitReviewUpdatesStudySession() {
         when(reviewRepository.findByCardIdAndUserId(CARD_ID, USER_ID))
-            .thenReturn(Optional.empty());
+                .thenReturn(Optional.empty());
         when(reviewRepository.save(any(CardReview.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> inv.getArgument(0));
 
         reviewService.submitReview(CARD_ID, USER_ID, 5);
 
         verify(sessionRepository).save(any(StudySession.class));
+    }
+
+    @Test
+    @DisplayName("Không thể review thẻ của user khác: ném ForbiddenException, không ghi dữ liệu")
+    void cannotReviewCardOwnedByAnotherUser() {
+        when(flashcardService.findCardOwnedBy(CARD_ID, USER_ID))
+                .thenThrow(new ForbiddenException("Không có quyền truy cập deck này"));
+
+        assertThatThrownBy(() -> reviewService.submitReview(CARD_ID, USER_ID, 5))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(reviewRepository, never()).save(any(CardReview.class));
+        verify(sessionRepository, never()).save(any(StudySession.class));
+    }
+
+    @Test
+    @DisplayName("Review thẻ không tồn tại: ném ResourceNotFoundException")
+    void cannotReviewMissingCard() {
+        when(flashcardService.findCardOwnedBy(CARD_ID, USER_ID))
+                .thenThrow(new ResourceNotFoundException("Không tìm thấy thẻ"));
+
+        assertThatThrownBy(() -> reviewService.submitReview(CARD_ID, USER_ID, 5))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(reviewRepository, never()).save(any(CardReview.class));
     }
 }
