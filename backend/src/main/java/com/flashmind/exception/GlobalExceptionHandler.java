@@ -41,8 +41,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
-        log.error("Lỗi không xác định", ex);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi server: " + ex.getMessage());
+        log.error("Unhandled error", ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Server error: " + ex.getMessage());
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {

@@ -7,7 +7,7 @@ Spring Boot 3.5.16 on Java 25, root package `com.flashmind`, entrypoint
 
 | Package | Role |
 |---------|------|
-| `config` | `SecurityConfig`, `RedisConfig`, `WebClientConfig` |
+| `config` | `SecurityConfig`, `RedisConfig`, `AnthropicClientConfig` |
 | `controller` | 5 REST controllers, orchestration only — no business logic |
 | `service` | All business logic, ownership checks, the SM-2 algorithm |
 | `repository` | Spring Data JPA repositories |
@@ -123,13 +123,32 @@ Aggregates `StudySession` rows over the last 30 days, filling empty days with ze
 ### AiGenerationService
 
 The flow: check deck ownership → `FileParsingService.extractText` → build the prompt → call
-OpenAI → parse and save the cards → `updateCardCount`.
+Claude → save the cards → `updateCardCount`.
 
-OpenAI is called with `WebClient` (WebFlux) but `.block()`ed — synchronous, on the request
-thread. Parameters: `temperature 0.3`, `response_format: json_object`, timeout **60 seconds**.
+Claude is called through the official **Anthropic Java SDK** (`com.anthropic:anthropic-java`).
+The `AnthropicClient` is a singleton bean built once in
+[AnthropicClientConfig](../backend/src/main/java/com/flashmind/config/AnthropicClientConfig.java);
+the call blocks on the request thread. Model `claude-opus-5`, `max_tokens` 16000, timeout
+**120 seconds** — all configurable via `anthropic.*` properties. There is **no `temperature`**:
+sampling parameters were removed on this model and sending one returns a 400. Adaptive thinking
+is left on (the model's default) and must not be disabled.
 
-The parser is deliberately tolerant: it accepts a bare array, a `flashcards` key, a `cards` key,
-or the first array-valued field it finds. Cards missing `front` or `back` are skipped. Every
+The response shape is guaranteed by **structured outputs**, not by prompt text — the schema is
+derived from the `GeneratedCards` / `GeneratedCard` records and enforced server-side, so the
+service does no JSON shape-guessing and never touches an `ObjectMapper`. The static instructions
+live in the `system` prompt; only the card count and file text go in the user message.
+
+`stopReason` is checked **before** the content is read, because a refusal comes back as HTTP 200
+with empty content:
+
+| Condition | Message |
+|-----------|---------|
+| `stopReason = REFUSAL` | `The AI declined to process this file's content` |
+| `stopReason = MAX_TOKENS` | `The AI response was too long, please request fewer cards` |
+| `RateLimitException` (429) | `The AI is overloaded, please try again in a few minutes` |
+| `NotFoundException` | bad model id → `Invalid AI configuration...` |
+
+Cards missing `front` or `back` are skipped, and a blank `hint` is stored as `null`. Every
 generated card comes with a `CardReview` due today. All failures surface as a
 `BusinessException` → HTTP 400.
 

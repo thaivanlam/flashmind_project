@@ -12,8 +12,8 @@
                     ┌──────────────────────────┼──────────────────────────┐
                     ▼                          ▼                          ▼
             ┌───────────────┐          ┌───────────────┐          ┌───────────────┐
-            │ PostgreSQL 16 │          │    Redis 7    │          │  OpenAI API   │
-            │    (data)     │          │ (write-only   │          │ (gpt-4o-mini) │
+            │ PostgreSQL 16 │          │    Redis 7    │          │  Claude API   │
+            │    (data)     │          │ (write-only   │          │(claude-opus-5)│
             └───────────────┘          │  due cards)   │          └───────────────┘
                                        └───────────────┘
 ```

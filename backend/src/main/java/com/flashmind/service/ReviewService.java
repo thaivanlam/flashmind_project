@@ -40,8 +40,8 @@ public class ReviewService {
             .stream()
             .collect(Collectors.toMap(Flashcard::getId, c -> c));
 
-        // Query đã loại review mồ côi; lọc thêm theo map thẻ tải được để chắc
-        // chắn client không bao giờ nhận `card: null`.
+        // The query already excludes orphaned reviews; filter again against the loaded
+        // card map so the client can never receive `card: null`.
         return dueReviews.stream()
             .filter(r -> cards.containsKey(r.getCardId()))
             .map(r -> CardReviewResponse.from(r, cards.get(r.getCardId())))
@@ -50,8 +50,8 @@ public class ReviewService {
 
     @Transactional
     public ReviewSubmitResponse submitReview(Long cardId, Long userId, int quality) {
-        // Kiểm tra quyền sở hữu thẻ (qua deck) trước khi ghi nhận review:
-        // thẻ không tồn tại -> 404, thẻ của user khác -> 403
+        // Check card ownership (via its deck) before recording the review:
+        // card does not exist -> 404, card belongs to another user -> 403
         flashcardService.findCardOwnedBy(cardId, userId);
 
         CardReview review = reviewRepository.findByCardIdAndUserId(cardId, userId)
@@ -77,7 +77,7 @@ public class ReviewService {
      */
     private void applySpacedRepetition(CardReview r, int quality) {
         if (quality >= 3) {
-            // Trả lời đúng → tăng interval
+            // Correct answer → increase the interval
             int newInterval;
             if (r.getRepetitionCount() == 0) {
                 newInterval = 1;
@@ -89,12 +89,12 @@ public class ReviewService {
             r.setInterval(newInterval);
             r.setRepetitionCount(r.getRepetitionCount() + 1);
         } else {
-            // Trả lời sai → reset interval về 1
+            // Wrong answer → reset the interval to 1
             r.setRepetitionCount(0);
             r.setInterval(1);
         }
 
-        // Cập nhật easiness factor
+        // Update the easiness factor
         double ef = r.getEasinessFactor()
             + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
         r.setEasinessFactor(Math.max(1.3, ef));

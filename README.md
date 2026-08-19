@@ -25,7 +25,7 @@ All project documentation lives in **[`docs/`](docs/README.md)**.
 
 - 🔐 **JWT authentication** — 1-hour access token + 7-day refresh token (stateless)
 - 📚 **Deck management** — create, edit and delete decks and flashcards
-- 🤖 **AI generation** — upload a PDF/TXT file and let `gpt-4o-mini` write the cards
+- 🤖 **AI generation** — upload a PDF/TXT file and let `claude-opus-5` write the cards
 - 🧮 **SM-2 spaced repetition** — the standard SuperMemo 2 algorithm, graded 0–5
 - 📊 **Analytics** — streak, 30-day chart, mastered card count
 - ⏰ **Scheduled jobs** — purge orphaned `card_reviews` at 03:00, cache due cards at 00:00
@@ -43,7 +43,7 @@ docker-compose.yml  Frontend + backend + PostgreSQL + Redis
 ## 🛠️ Tech stack
 
 **Backend** — Java 25, Spring Boot 3.5.16, Spring Security + jjwt 0.12, Spring Data JPA,
-PostgreSQL 16, Spring Data Redis, Spring WebFlux (WebClient), Spring Scheduler,
+PostgreSQL 16, Spring Data Redis, Anthropic Java SDK, Spring Scheduler,
 Apache PDFBox, Lombok.
 
 **Frontend** — React 19, TypeScript 5.6 (strict), Vite 6, Redux Toolkit, React Router 7,
@@ -54,7 +54,7 @@ Axios, Tailwind CSS 3.4, Chart.js, Lucide React, react-hot-toast.
 ## 🚀 Quick start
 
 ```bash
-cp .env.example .env          # then fill in OPENAI_API_KEY
+cp .env.example .env          # then fill in ANTHROPIC_API_KEY
 docker-compose up -d
 docker-compose logs -f backend
 ```

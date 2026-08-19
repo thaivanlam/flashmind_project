@@ -63,7 +63,7 @@ public class AnalyticsService {
     private int calculateStreak(Map<LocalDate, StudySession> sessions, LocalDate today) {
         int streak = 0;
         LocalDate current = today;
-        // Nếu hôm nay chưa học, vẫn cho phép streak tính từ hôm qua
+        // If nothing has been studied today, allow the streak to count from yesterday
         if (!sessions.containsKey(current)) {
             current = current.minusDays(1);
         }

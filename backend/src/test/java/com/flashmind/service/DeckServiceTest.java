@@ -45,7 +45,7 @@ class DeckServiceTest {
     }
 
     @Test
-    @DisplayName("Xóa deck cũng xóa review của mọi thẻ trong deck (không để lại bản ghi mồ côi)")
+    @DisplayName("Deleting a deck also deletes the reviews of every card in it (leaves no orphans)")
     void deleteDeckAlsoDeletesCardReviews() {
         Deck deck = ownedDeck();
         when(deckRepository.findById(DECK_ID)).thenReturn(Optional.of(deck));
@@ -53,7 +53,7 @@ class DeckServiceTest {
 
         deckService.deleteDeck(DECK_ID, USER_ID);
 
-        // Review phải bị xóa TRƯỚC khi thẻ biến mất, nếu không id thẻ không còn để dọn
+        // Reviews must be deleted BEFORE the cards disappear, otherwise the card ids are gone
         InOrder order = inOrder(cardReviewRepository, flashcardRepository, deckRepository);
         order.verify(cardReviewRepository).deleteByCardIdIn(List.of(1L, 2L));
         order.verify(flashcardRepository).deleteByDeckId(DECK_ID);
@@ -61,7 +61,7 @@ class DeckServiceTest {
     }
 
     @Test
-    @DisplayName("Deck rỗng: không gọi xóa review thừa")
+    @DisplayName("Empty deck: no redundant review-delete call is made")
     void deleteEmptyDeckSkipsReviewCleanup() {
         when(deckRepository.findById(DECK_ID)).thenReturn(Optional.of(ownedDeck()));
         when(flashcardRepository.findIdsByDeckId(DECK_ID)).thenReturn(List.of());
@@ -73,7 +73,7 @@ class DeckServiceTest {
     }
 
     @Test
-    @DisplayName("Xóa deck của user khác: ném ForbiddenException, không xóa gì")
+    @DisplayName("Deleting another user's deck: throws ForbiddenException and deletes nothing")
     void cannotDeleteDeckOwnedByAnotherUser() {
         Deck deck = Deck.builder().id(DECK_ID).userId(999L).title("Deck").build();
         when(deckRepository.findById(DECK_ID)).thenReturn(Optional.of(deck));

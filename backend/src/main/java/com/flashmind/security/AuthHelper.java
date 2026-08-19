@@ -11,6 +11,6 @@ public class AuthHelper {
         if (principal instanceof UserPrincipal up) {
             return up.getUserId();
         }
-        throw new IllegalStateException("Không tìm thấy user trong context");
+        throw new IllegalStateException("No user found in the security context");
     }
 }

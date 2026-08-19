@@ -134,10 +134,13 @@ Returns a `FlashcardResponse[]` of the cards just saved (`isAiGenerated: true`),
 
 Common errors, all of them `400`:
 
-- `"Chỉ hỗ trợ file PDF và TXT"`
-- `"File trống hoặc không thể đọc nội dung"`
-- `"Không thể tạo flashcard từ AI: …"` — the OpenAI call failed or exceeded 60 seconds
-- `"AI trả về định dạng không hợp lệ"` / `"AI không sinh được flashcard nào"`
+- `"Only PDF and TXT files are supported"`
+- `"The file is empty or its content could not be read"`
+- `"Could not generate flashcards from the AI: …"` — the Claude call failed or exceeded 120 seconds
+- `"The AI declined to process this file's content"` — Claude returned `stop_reason: refusal`
+- `"The AI response was too long, please request fewer cards"` — hit the `max_tokens` cap
+- `"The AI is overloaded, please try again in a few minutes"` — Claude returned 429
+- `"The AI returned an invalid format"` / `"The AI did not generate any flashcards"`
 
 The file content is truncated to 8000 characters before being sent to the model.
 

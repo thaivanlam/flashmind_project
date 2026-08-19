@@ -5,12 +5,12 @@
 - Docker + Docker Compose (the recommended way to run everything)
 - Or, running by hand: JDK 25, Maven (**there is no Maven wrapper** — use the system `mvn`),
   Node.js 20+, PostgreSQL 16, Redis 7
-- An OpenAI API key (only needed for AI card generation)
+- An Anthropic API key (only needed for AI card generation)
 
 ## Running everything with Docker
 
 ```bash
-cp .env.example .env          # then fill in OPENAI_API_KEY
+cp .env.example .env          # then fill in ANTHROPIC_API_KEY
 docker-compose up -d
 docker-compose logs -f backend
 ```
@@ -34,7 +34,7 @@ docker-compose up postgres redis -d
 ## Backend (`backend/`)
 
 ```bash
-export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
 mvn spring-boot:run
 
 mvn clean package -DskipTests
