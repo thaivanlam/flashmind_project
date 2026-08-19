@@ -26,7 +26,7 @@ you are about to touch.
 | Routes, Redux slices, the axios layer, token storage | [frontend.md](frontend.md) |
 | TypeScript interfaces mirroring DTOs | [frontend.md](frontend.md), [api-reference.md](api-reference.md) |
 | `application.properties`, environment variables, `.env.example` | [configuration.md](configuration.md) |
-| `docker-compose.yml`, the Dockerfiles, `nginx.conf` | [configuration.md](configuration.md), [development.md](development.md) |
+| `docker-compose.yml`, the Dockerfiles, `nginx.conf` | [docker.md](docker.md), [configuration.md](configuration.md), [development.md](development.md) |
 | Build/test scripts, adding or removing tests | [development.md](development.md); the test count also appears in [backend.md](backend.md) |
 | Architecture or a cross-cutting design decision | [architecture.md](architecture.md), and `CLAUDE.md` in the repository root as well |
 

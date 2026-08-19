@@ -19,6 +19,7 @@ PostgreSQL 16 and Redis 7, card generation via Claude `claude-opus-5`.
 | [spaced-repetition.md](spaced-repetition.md) | The SM-2 algorithm and how it is implemented |
 | [development.md](development.md) | Running locally, Docker, build, test |
 | [configuration.md](configuration.md) | Environment variables, ports, CORS, production deployment |
+| [docker.md](docker.md) | The container stack: topology, images, volumes, commands, troubleshooting |
 | [maintaining-docs.md](maintaining-docs.md) | Which docs to update for a given code change |
 
 ## Conventions

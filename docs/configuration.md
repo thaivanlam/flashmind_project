@@ -86,6 +86,9 @@ openssl rand -base64 48
 
 ## Docker
 
+Details of the container stack — topology, build layers, volumes and troubleshooting — are in
+[docker.md](docker.md).
+
 - [backend/Dockerfile](../backend/Dockerfile): multi-stage build, `maven:3.9-eclipse-temurin-25`
   → `eclipse-temurin:25-jre-alpine`. Tests are skipped (`-DskipTests`) in the image build step.
 - [frontend/Dockerfile](../frontend/Dockerfile): `node:20-alpine` builds, `nginx:alpine` serves

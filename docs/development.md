@@ -9,6 +9,9 @@
 
 ## Running everything with Docker
 
+The full reference for the container setup — topology, image builds, volumes and
+troubleshooting — is [docker.md](docker.md).
+
 ```bash
 cp .env.example .env          # then fill in ANTHROPIC_API_KEY
 docker-compose up -d
