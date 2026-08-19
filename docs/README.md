@@ -21,6 +21,7 @@ PostgreSQL 16 and Redis 7, card generation via Claude `claude-opus-5`.
 | [configuration.md](configuration.md) | Environment variables, ports, CORS, production deployment |
 | [docker.md](docker.md) | The container stack: topology, images, volumes, commands, troubleshooting |
 | [maintaining-docs.md](maintaining-docs.md) | Which docs to update for a given code change |
+| [audit/](audit/README.md) | Security and correctness audit: 35 open findings by severity, with triggers and fixes |
 
 ## Conventions
 
@@ -40,3 +41,6 @@ The points below describe the code as it is today, not what is planned:
 - **No logout or token revocation.** Refresh tokens are stateless.
 - **No frontend tests**, and `npm run lint` does not work (eslint is missing).
 - **The database has no foreign keys.** Cascade deletion is done manually in the service layer.
+- **35 open audit findings**, 3 of them Critical: a committed JWT signing key used as the
+  production default, expired tokens returning 403 so the SPA never refreshes, and the Claude
+  call running inside a database transaction. See [audit/](audit/README.md).
