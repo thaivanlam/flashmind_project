@@ -28,6 +28,7 @@ you are about to touch.
 | `docker-compose.yml`, the Dockerfiles, `nginx.conf` | [configuration.md](configuration.md), [development.md](development.md) |
 | Build/test scripts, adding or removing tests | [development.md](development.md); the test count also appears in [backend.md](backend.md) |
 | Architecture or a cross-cutting design decision | [architecture.md](architecture.md), and `CLAUDE.md` in the repository root as well |
+| Fixing anything listed in [audit/](audit/README.md) | Move the finding to the "Fixed" table in its severity file, with the fixing commit, and update the totals in [audit/README.md](audit/README.md) |
 
 ## When adding a new document
 
