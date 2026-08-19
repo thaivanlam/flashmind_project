@@ -15,6 +15,7 @@ PostgreSQL 16 and Redis 7, card generation via Claude `claude-opus-5`.
 | [frontend.md](frontend.md) | Routing, Redux Toolkit, API layer, token storage, components |
 | [api-reference.md](api-reference.md) | Full specification of every endpoint: request, response, error codes |
 | [data-model.md](data-model.md) | Entities, tables, constraints, manual deletion rules |
+| [flows.md](flows.md) | User flow, data flow and control flow for generating cards from a file and reviewing them |
 | [spaced-repetition.md](spaced-repetition.md) | The SM-2 algorithm and how it is implemented |
 | [development.md](development.md) | Running locally, Docker, build, test |
 | [configuration.md](configuration.md) | Environment variables, ports, CORS, production deployment |

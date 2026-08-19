@@ -20,7 +20,8 @@ you are about to touch.
 | A new service, or a service changing responsibility | [backend.md](backend.md) |
 | Security: JWT, filter chain, authorization rules | [backend.md](backend.md), [architecture.md](architecture.md); if configuration is affected, [configuration.md](configuration.md) |
 | Cron jobs, how Redis is used | [backend.md](backend.md), [architecture.md](architecture.md) |
-| The AI prompt, file parsing, character/size limits | [backend.md](backend.md), [api-reference.md](api-reference.md) |
+| The AI prompt, file parsing, character/size limits | [backend.md](backend.md), [api-reference.md](api-reference.md), [flows.md](flows.md) |
+| The generation or review flow end to end: screens, call order, error paths, SM-2 | [flows.md](flows.md) |
 | Error codes, `GlobalExceptionHandler` | [api-reference.md](api-reference.md), [backend.md](backend.md) |
 | Routes, Redux slices, the axios layer, token storage | [frontend.md](frontend.md) |
 | TypeScript interfaces mirroring DTOs | [frontend.md](frontend.md), [api-reference.md](api-reference.md) |
